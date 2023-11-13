@@ -1,4 +1,3 @@
-# Discovery of novel plankton species from visual
-images
+# Discovery of novel plankton species from visual images
 
-Dataset: WHOI-Plankton
+### Dataset: WHOI-Plankton
