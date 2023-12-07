@@ -56,7 +56,7 @@ class PlanktonsConfig(datasets.BuilderConfig):
           **kwargs: keyword arguments forwarded to super
         """
         super(PlanktonsConfig, self).__init__(
-            version=datasets.Version("1.0.0"), **kwargs
+            version=datasets.Version("1.0.1"), **kwargs
         )
         self.files_config = files_config
 
@@ -109,7 +109,7 @@ class Planktons(datasets.GeneratorBasedBuilder):
     def _generate_examples(self, files_config, split):
         """Yields examples."""
         files = get_files(
-            files_config[split], exclude=["mix"] if split == "test" else []
+            files_config[split], exclude=["mix"] if split == "test" else ["mix"]
         )
 
         for id_, file in enumerate(files):
