@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import openTSNE
 
 # load the vectors
-# # vecs = torch.load("embeddings/resnet_vecs.pt").numpy()  # (N, 2048)
-# # vecs = torch.load("embeddings/vit_vecs.pt").numpy()  # (N, 768)
-# # vecs = torch.load("embeddings/beit_vecs.pt").numpy()  # (N, 768)
-# # vecs = torch.load("embeddings/dinov2_vecs.pt").numpy()  # (N, 768)
-vecs = torch.load("embeddings/clip_vecs.pt").numpy()  # (N, 512)
+# # vecs = torch.load("embeddings/vecs_resnet.pt").numpy()  # (N, 2048)
+# # vecs = torch.load("embeddings/vecs_vit.pt").numpy()  # (N, 768)
+# # vecs = torch.load("embeddings/vecs_beit.pt").numpy()  # (N, 768)
+# # vecs = torch.load("embeddings/vecs_dinov2.pt").numpy()  # (N, 768)
+vecs = torch.load("embeddings/vecs_clip.pt").numpy()  # (N, 512)
 tags = torch.load("embeddings/tags.pt").numpy()  # (N,)
 
 # perform tsne with multiscale embedding
@@ -26,11 +26,11 @@ embedding = openTSNE.TSNE(n_jobs=8).fit(
 )
 
 # save the tsne embedding
-# np.save("embeddings/resnet_tsne.npy", embedding)
-# np.save("embeddings/vit_tsne.npy", embedding)
-# np.save("embeddings/beit_tsne.npy", embedding)
-# np.save("embeddings/dinov2_tsne.npy", embedding)
-np.save("embeddings/clip_tsne.npy", embedding)
+# np.save("embeddings/tsne_resnet.npy", embedding)
+# np.save("embeddings/tsne_vit.npy", embedding)
+# np.save("embeddings/tsne_beit.npy", embedding)
+# np.save("embeddings/tsne_dinov2.npy", embedding)
+np.save("embeddings/tsne_clip.npy", embedding)
 
 # plot the embedding
 plt.figure(figsize=(10, 10))
@@ -42,5 +42,5 @@ plt.scatter(
     s=0.1,
 )
 plt.axis("off")
-plt.savefig("figures/clip_tsne.png", dpi=300)
+plt.savefig("figures/tsne_clip.png", dpi=300)
 plt.close()

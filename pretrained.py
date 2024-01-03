@@ -70,8 +70,8 @@ for batch in train_loader:
 
 # save the vectors
 torch.save(tags, "embeddings/tags.pt")
-# torch.save(vecs, "embeddings/resnet_vecs.pt")
-# torch.save(vecs, "embeddings/vit_vecs.pt")
-# torch.save(vecs, "embeddings/beit_vecs.pt")
-# torch.save(vecs, "embeddings/dinov2_vecs.pt")
-torch.save(vecs, "embeddings/clip_vecs.pt")
+# torch.save(vecs, "embeddings/vecs_resnet.pt")
+# torch.save(vecs, "embeddings/vecs_vit.pt")
+# torch.save(vecs, "embeddings/vecs_beit.pt")
+# torch.save(vecs, "embeddings/vecs_dinov2.pt")
+torch.save(vecs, "embeddings/vecs_clip.pt")
