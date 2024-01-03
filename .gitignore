@@ -1,6 +1,5 @@
 .vscode/
 __pycache__/
-tensors/
-data/
+embeddings/
 *.err
 *.out

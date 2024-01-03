@@ -14,3 +14,4 @@ nvidia-smi
 . ~/miniconda3/etc/profile.d/conda.sh
 conda activate base
 python pretrained.py
+python tsne.py
