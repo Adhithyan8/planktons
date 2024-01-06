@@ -4,10 +4,8 @@ import matplotlib.pyplot as plt
 import openTSNE
 
 # load the vectors
-# # vecs = torch.load("embeddings/vecs_resnet.pt").numpy()  # (N, 2048)
-# # vecs = torch.load("embeddings/vecs_vit.pt").numpy()  # (N, 768)
-# # vecs = torch.load("embeddings/vecs_beit.pt").numpy()  # (N, 768)
-# # vecs = torch.load("embeddings/vecs_dinov2.pt").numpy()  # (N, 768)
+# vecs = torch.load("embeddings/vecs_resnet.pt").numpy()  # (N, 2048)
+# vecs = torch.load("embeddings/vecs_dinov2.pt").numpy()  # (N, 768)
 vecs = torch.load("embeddings/vecs_clip.pt").numpy()  # (N, 512)
 tags = torch.load("embeddings/tags.pt").numpy()  # (N,)
 
@@ -27,8 +25,6 @@ embedding = openTSNE.TSNE(n_jobs=8).fit(
 
 # save the tsne embedding
 # np.save("embeddings/tsne_resnet.npy", embedding)
-# np.save("embeddings/tsne_vit.npy", embedding)
-# np.save("embeddings/tsne_beit.npy", embedding)
 # np.save("embeddings/tsne_dinov2.npy", embedding)
 np.save("embeddings/tsne_clip.npy", embedding)
 
