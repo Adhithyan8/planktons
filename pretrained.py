@@ -5,20 +5,21 @@ from torchvision import transforms as T
 from transformers import (
     AutoImageProcessor,
     AutoProcessor,
-    BeitModel,
-    ResNetModel,
-    ViTModel,
-    Dinov2Model,
     CLIPVisionModelWithProjection,
+    Dinov2Model,
+    ResNetModel,
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # dataset
 train_dataset = load_dataset(
-    "/local_storage/users/adhkal/planktons_dataset", "2013-14", split="train"
+    "/local_storage/users/adhkal/planktons_dataset",
+    "2013-14",
+    split="train",
 )
 train_dataset = train_dataset.with_format("torch")
+
 # convert to 3 channels
 train_dataset = train_dataset.map(
     lambda x: {"image": x["image"].repeat(3, 1, 1), "label": x["label"]},
@@ -26,12 +27,6 @@ train_dataset = train_dataset.map(
 
 # load pretrained model (pick one)
 # feature_extractor = AutoImageProcessor.from_pretrained("microsoft/resnet-152")
-# feature_extractor = AutoImageProcessor.from_pretrained(
-#     "google/vit-base-patch16-224-in21k"
-# )
-# feature_extractor = AutoImageProcessor.from_pretrained(
-#     "microsoft/beit-base-patch16-224-pt22k"
-# )
 # feature_extractor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
 feature_extractor = AutoProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
@@ -44,18 +39,16 @@ train_dataset = train_dataset.map(
 )  # CLIPVisionModelWithProjection
 
 # dataloader
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=False)
+train_loader = DataLoader(train_dataset, batch_size=128, shuffle=False)
 
 # save the output vectors
-# vecs = torch.empty((0, 2048)) # ResNetModel
+# vecs = torch.empty((0, 2048))  # ResNetModel
 vecs = torch.empty((0, 512))  # CLIPVisionModelWithProjection
-# vecs = torch.empty((0, 768)) # other models
-# tags = torch.empty((0,))
+# vecs = torch.empty((0, 768))  # other models
+tags = torch.empty((0,))
 
 # model (pick one)
 # model = ResNetModel.from_pretrained("microsoft/resnet-152")
-# model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
-# model = BeitModel.from_pretrained("microsoft/beit-base-patch16-224-pt22k")
 # model = Dinov2Model.from_pretrained("facebook/dinov2-base")
 model = CLIPVisionModelWithProjection.from_pretrained("openai/clip-vit-base-patch32")
 
@@ -71,7 +64,5 @@ for batch in train_loader:
 # save the vectors
 torch.save(tags, "embeddings/tags.pt")
 # torch.save(vecs, "embeddings/vecs_resnet.pt")
-# torch.save(vecs, "embeddings/vecs_vit.pt")
-# torch.save(vecs, "embeddings/vecs_beit.pt")
 # torch.save(vecs, "embeddings/vecs_dinov2.pt")
 torch.save(vecs, "embeddings/vecs_clip.pt")
