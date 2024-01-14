@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --mem 64GB
 #SBATCH --gres gpu:1
-#SBATCH --cpus-per-task 4
+#SBATCH --cpus-per-task 10
 #SBATCH --time 24:00:00
 #SBATCH --constrain "smaug"
 #SBATCH --mail-type BEGIN,END,FAIL
