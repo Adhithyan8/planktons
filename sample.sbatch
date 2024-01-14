@@ -15,3 +15,4 @@ nvidia-smi
 conda activate base
 python pretrained.py
 python tsne.py
+python knn.py

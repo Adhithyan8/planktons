@@ -3,7 +3,7 @@ import openTSNE
 import torch
 from sklearn.neighbors import KNeighborsClassifier
 
-model = "clip"
+model = "dinov2"
 
 # load the vectors
 train_vecs = torch.load(f"embeddings/vecs_{model}.pt").numpy()  # (N, 2048)
