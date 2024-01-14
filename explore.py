@@ -12,7 +12,7 @@ train_dataset = load_dataset(
     "planktons_dataset", "2013-14", split="train", trust_remote_code=True
 )
 # embeddings
-embeddings = np.load("embeddings/tsne_clip.npy")
+embeddings = np.load("embeddings/tsne_dinov2.npy")
 # labels
 names = train_dataset.features["label"].names
 indices = np.load("embeddings/tags.npy").astype(int)
@@ -29,7 +29,7 @@ for i in range(max(indices) + 1):
             x=embeddings[indices == i, 0],
             y=embeddings[indices == i, 1],
             mode="markers",
-            marker=dict(size=5, opacity=0.8, color=colors[indices == i]),
+            marker=dict(size=2, opacity=0.8, color=colors[indices == i]),
             name=names[i],
             # set id as embedding index
             ids=[str(idx) for idx in np.where(indices == i)[0]],
@@ -42,7 +42,7 @@ fig.update_layout(
     yaxis=dict(visible=False),
     autosize=False,
     height=700,
-    width=1500,
+    width=1000,
 )
 
 app = Dash(__name__)

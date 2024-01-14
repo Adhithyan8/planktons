@@ -18,7 +18,7 @@ affinities_multiscale_mixture = openTSNE.affinity.Multiscale(
     random_state=3,
 )
 init = openTSNE.initialization.pca(vecs, random_state=42)
-embedding = openTSNE.TSNE(n_jobs=8).fit(
+embedding = openTSNE.TSNE(n_jobs=8, dof=0.7).fit(
     affinities=affinities_multiscale_mixture,
     initialization=init,
 )
