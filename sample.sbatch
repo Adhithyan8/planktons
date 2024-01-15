@@ -13,6 +13,4 @@ echo "Starting job ${SLURM_JOB_ID} on ${SLURMD_NODENAME}"
 nvidia-smi
 . ~/miniconda3/etc/profile.d/conda.sh
 conda activate base
-python pretrained.py
-python tsne.py
-python knn.py
+python tsimcneviz.py
