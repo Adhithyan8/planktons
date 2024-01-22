@@ -170,25 +170,20 @@ tags = np.load("embeddings/tags.npy")
 embed_train = embedding[: len(train_dataset)]
 embed_test = embedding[len(train_dataset) :]
 
-neighbours = [1, 3, 5, 15]
-
 # knn classifier
-for n in neighbours:
-    knn = KNeighborsClassifier(n_neighbors=n, n_jobs=8)
-    knn.fit(embed_train, tags[: len(train_dataset)])
+knn = KNeighborsClassifier(n_neighbors=5, n_jobs=8)
+knn.fit(embed_train, tags[: len(train_dataset)])
 
-    # test the classifier (class wise F1 score and overall F1 score)
-    preds = knn.predict(embed_test)
-    f1 = f1_score(
-        tags[len(train_dataset) :], preds, average="macro"
-    )  # unweighted average
-    acc = accuracy_score(tags[len(train_dataset) :], preds)
+# test the classifier (class wise F1 score and overall F1 score)
+preds = knn.predict(embed_test)
+f1 = f1_score(tags[len(train_dataset) :], preds, average="macro")  # unweighted average
+acc = accuracy_score(tags[len(train_dataset) :], preds)
 
-    print(f"Accuracy: {acc}")
-    print(f"F1 score: {f1}")
+print(f"Accuracy: {acc}")
+print(f"F1 score: {f1}")
 
-# # class wise F1 score
-# for i in range(int(max(tags)) + 1):
-#     mask = tags[len(train_dataset) :] == i
-#     f1 = f1_score(tags[len(train_dataset) :][mask], preds[mask], average="macro")
-#     print(f"F1 score for class {i}: {f1}")
+# class wise F1 score
+for i in range(int(max(tags)) + 1):
+    mask = tags[len(train_dataset) :] == i
+    f1 = f1_score(tags[len(train_dataset) :][mask], preds[mask], average="macro")
+    print(f"F1 score for class {i}: {f1}")
