@@ -1,15 +1,12 @@
 import torch
-from tsimcne.tsimcne import TSimCNE
-from datasets import load_dataset, concatenate_datasets
+from datasets import concatenate_datasets, load_dataset
+from torch.utils.data import Dataset
 from torchvision import transforms as T
-from transformers import (
-    AutoImageProcessor,
-    Dinov2Model,
-    ResNetModel,
-)
+from torchvision.models import resnet18
+from tsimcne.tsimcne import TSimCNE
+import time
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+t = time.time()
 # dataset
 train_dataset = load_dataset(
     "/local_storage/users/adhkal/planktons_dataset",
@@ -24,44 +21,59 @@ test_dataset = load_dataset(
 
 # combine train and test
 full_dataset = concatenate_datasets([train_dataset, test_dataset])
-full_dataset = full_dataset.with_format("torch")
-# convert to 3 channels
+# preprocess the dataset
 full_dataset = full_dataset.map(
-    lambda x: {"image": x["image"].repeat(3, 1, 1), "label": x["label"]},
+    lambda x: {
+        "image": x["image"].convert("RGB"),
+        "label": x["label"],
+    }
+)
+full_dataset = full_dataset.map(
+    lambda x: {
+        "image": T.Resize((224, 224))(x["image"]),
+        "label": x["label"],
+    }
 )
 
-# load pretrained model (pick one)
-feature_extractor = AutoImageProcessor.from_pretrained("microsoft/resnet-18")
-# feature_extractor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
+print(f"Time taken to preprocess the dataset: {time.time()-t}")
+t = time.time()
 
-# preprocess
-full_dataset = full_dataset.map(
-    lambda x: {"image": feature_extractor(x["image"]), "label": x["label"]},
-)
-# format to contain img, label tuples
-full_dataset = full_dataset.map(
-    lambda x: (x["image"]["pixel_values"].squeeze(1), x["label"]),
-    remove_columns=["image", "label"],
-)
 
-# model
-model = ResNetModel.from_pretrained("microsoft/resnet-18")
-print(model.config)
-# model = Dinov2Model.from_pretrained("facebook/dinov2-base")
+# tsimcne only takes in a torch dataset
+# HACKY FIX: convert the huggingface dataset to torch dataset
+class TorchDataset(Dataset):
+    def __init__(self, dataset):
+        self.dataset = dataset
 
-# tsimcne object
+    def __getitem__(self, idx):
+        img = self.dataset[idx]["image"]
+        lbl = self.dataset[idx]["label"]
+        return img, lbl
+
+    def __len__(self):
+        return len(self.dataset)
+
+
+full_dataset = TorchDataset(full_dataset)
+
+
+# tsimcne object (using their default backbone resnet18)
 tsimcne = TSimCNE(
-    backbone=model,
     data_transform=None,  # Change this later
-    total_epochs=[500, 50, 250],
-    batch_size=256,
+    total_epochs=[5, 1, 2],  # Low for testing
+    batch_size=16,
+    image_size=(224, 224),
 )
 
 # train
 tsimcne.fit(full_dataset)
 
+print(f"Time taken to train the model: {time.time()-t}")
+
 # map the images to 2D vectors
 vecs = tsimcne.transform(full_dataset)
+
+print(f"Time taken to get the vectors: {time.time()-t}")
 
 # save the output vectors
 torch.save(vecs, "embeddings/vecs_tsimcne_resnet18.pt")
