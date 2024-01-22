@@ -12,10 +12,13 @@ train_dataset = load_dataset(
     "planktons_dataset", "2013-14", split="train", trust_remote_code=True
 )
 # embeddings
-embeddings = np.load("embeddings/tsne_dinov2.npy")
+embeddings = np.load("embeddings/tsne_resnet50.npy")
+embeddings = embeddings[: len(train_dataset)]
+
 # labels
 names = train_dataset.features["label"].names
 indices = np.load("embeddings/tags.npy").astype(int)
+indices = indices[: len(train_dataset)]
 labels = [names[idx] for idx in indices]
 
 # set colors
@@ -41,8 +44,8 @@ fig.update_layout(
     xaxis=dict(visible=False),
     yaxis=dict(visible=False),
     autosize=False,
-    height=700,
-    width=1000,
+    height=1400,
+    width=2000,
 )
 
 app = Dash(__name__)
