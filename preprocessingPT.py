@@ -1,8 +1,11 @@
 import os
-import pandas as pd
 import shutil
-from PIL import Image
-import torchvision.transforms as T
+
+import pandas as pd
+import warnings
+
+# ignore warnings
+warnings.filterwarnings("ignore")
 
 # create folder "planktons_pytorch" in /local_storage/users/adhkal/
 base_path = "/local_storage/users/adhkal/"
@@ -32,13 +35,20 @@ for i, label in enumerate(label_names):
 # we need to move the images to /local_storage/users/adhkal/planktons_pytorch/train
 # and add the image path and label to the dataframe
 for label in label_names:
+    # ignore "mix" label
+    if label == "mix":
+        continue
     # get all the images in the label folder
-    images = os.listdir(
-        os.path.join("/local_storage/users/adhkal/planktons_dataset/data/2013/", label)
+    images = sorted(
+        os.listdir(
+            os.path.join(
+                "/local_storage/users/adhkal/planktons_dataset/data/2013/", label
+            )
+        )
     )
-    # move the images to /local_storage/users/adhkal/planktons_pytorch/train
+    # copy the images to /local_storage/users/adhkal/planktons_pytorch/train
     for image in images:
-        shutil.move(
+        shutil.copy(
             os.path.join(
                 "/local_storage/users/adhkal/planktons_dataset/data/2013/", label, image
             ),
@@ -65,13 +75,20 @@ for label in label_names:
 # we need to move the images to /local_storage/users/adhkal/planktons_pytorch/test
 # and add the image path and label to the dataframe
 for label in label_names:
+    # ignore "mix" label
+    if label == "mix":
+        continue
     # get all the images in the label folder
-    images = os.listdir(
-        os.path.join("/local_storage/users/adhkal/planktons_dataset/data/2014/", label)
+    images = sorted(
+        os.listdir(
+            os.path.join(
+                "/local_storage/users/adhkal/planktons_dataset/data/2014/", label
+            )
+        )
     )
-    # move the images to /local_storage/users/adhkal/planktons_pytorch/test
+    # copy the images to /local_storage/users/adhkal/planktons_pytorch/test
     for image in images:
-        shutil.move(
+        shutil.copy(
             os.path.join(
                 "/local_storage/users/adhkal/planktons_dataset/data/2014/", label, image
             ),
@@ -93,21 +110,4 @@ for label in label_names:
         )
 
 # save the dataframe as annotations.csv
-df.to_csv(os.path.join(base_path, "planktons_pytorch", "annotations.csv"))
-
-# preprocess the dataset
-# for images in train and test, resize to 224x224 and convert to RGB
-# save the processed images in /local_storage/users/adhkal/planktons_pytorch/train and /local_storage/users/adhkal/planktons_pytorch/test
-for image in os.listdir(os.path.join(base_path, "planktons_pytorch", "train")):
-    img = Image.open(
-        os.path.join(base_path, "planktons_pytorch", "train", image)
-    ).convert("RGB")
-    img = T.Resize((224, 224))(img)
-    img.save(os.path.join(base_path, "planktons_pytorch", "train", image))
-
-for image in os.listdir(os.path.join(base_path, "planktons_pytorch", "test")):
-    img = Image.open(
-        os.path.join(base_path, "planktons_pytorch", "test", image)
-    ).convert("RGB")
-    img = T.Resize((224, 224))(img)
-    img.save(os.path.join(base_path, "planktons_pytorch", "test", image))
+df.to_csv(os.path.join(base_path, "planktons_pytorch", "annotations.csv"), index=False)
