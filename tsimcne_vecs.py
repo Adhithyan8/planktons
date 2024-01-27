@@ -23,6 +23,7 @@ class PlanktonsPT(Dataset):
         img_path = self.img_labels.iloc[idx, 0]
         with open(img_path, "rb") as f:
             image = Image.open(f)
+            image = T.Resize((32, 32))(image)  # to speed up training
         label = self.img_labels.iloc[idx, 1]
         return image, label
 
@@ -30,13 +31,12 @@ class PlanktonsPT(Dataset):
 # both the train and test datasets combined
 planktons_dataset = PlanktonsPT(
     annotations_file="/local_storage/users/adhkal/planktons_pytorch/annotations.csv"
-)  # not sure if reshaping is needed
+)
 
 # tsimcne object (using their default rand initialized resnet18 as backbone)
 tsimcne = TSimCNE(
-    data_transform=None,  # Change this later
-    total_epochs=[1, 1, 1],  # for testing
-    batch_size=32,
+    total_epochs=[500, 50, 250],
+    batch_size=512,
 )
 
 # train
