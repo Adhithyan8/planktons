@@ -1,14 +1,14 @@
-import time
-
 import numpy as np
 import pandas as pd
 from PIL import Image
+import torch
 from torch.utils.data import Dataset
 from torchvision import transforms as T
 from torchvision.io import read_image
 from tsimcne.tsimcne import TSimCNE
+from transformers import AutoImageProcessor, Dinov2Model
 
-t = time.time()
+processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
 
 
 # gets both the train and test datasets combined
@@ -23,7 +23,8 @@ class PlanktonsPT(Dataset):
         img_path = self.img_labels.iloc[idx, 0]
         with open(img_path, "rb") as f:
             image = Image.open(f)
-            image = T.Resize((32, 32))(image)  # to speed up training
+            image = T.Resize((224, 224))(image)  # to speed up training
+            image = processor(image)["pixel_values"][0]
         label = self.img_labels.iloc[idx, 1]
         return image, label
 
@@ -33,21 +34,27 @@ planktons_dataset = PlanktonsPT(
     annotations_file="/local_storage/users/adhkal/planktons_pytorch/annotations.csv"
 )
 
+backbone = Dinov2Model.from_pretrained("facebook/dinov2-base")
+# mlp with one hidden layer as the projection head
+projection_head = torch.nn.Sequential(
+    torch.nn.Linear(768, 1024),
+    torch.nn.ReLU(),
+    torch.nn.Linear(1024, 128),
+)
+
 # tsimcne object (using their default rand initialized resnet18 as backbone)
 tsimcne = TSimCNE(
-    total_epochs=[500, 50, 250],
-    batch_size=512,
+    backbone=backbone,
+    projection_head=projection_head,
+    total_epochs=[1, 1, 1],
+    batch_size=2,
 )
 
 # train
 tsimcne.fit(planktons_dataset)
 
-print(f"Time taken to train the model: {time.time()-t}")
-
 # map the images to 2D vectors
 vecs = tsimcne.transform(planktons_dataset)
-
-print(f"Time taken to get the vectors: {time.time()-t}")
 
 # save the output vectors
 np.save("embeddings/vec_tsimcne_resnet18.npy", vecs)
