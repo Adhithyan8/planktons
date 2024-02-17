@@ -1,10 +1,27 @@
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+import numpy as np
 import openTSNE
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.neighbors import KNeighborsClassifier
+
+# load the embeddings
+model_name = "resnet18"
+output = np.load(f"embeddings/output_{model_name}.npy")
+labels = np.load("embeddings/labels.npy")
+
+"""
+2013: 421238
+2013: 115951 (ignore mix)
+2014: 329832
+2014: 63676 (ignore mix)
+"""
+# magic numbers
+NUM_TRAIN = 115951
+NUM_TEST = 63676
 
 # tsne
 affinities_multiscale_mixture = openTSNE.affinity.Multiscale(

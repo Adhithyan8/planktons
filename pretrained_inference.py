@@ -1,14 +1,12 @@
+import numpy as np
 import torch
 import torch.hub
-
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from utils import get_datapipe
 
-
-
-model_name = "resnet18"
+model_name = "resnet50"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
@@ -56,12 +54,13 @@ test_dataloader = DataLoader(
 
 # model (pick one)
 if model_name == "resnet18":
-    model = torch.hub.load("pytorch/vision:v0.10.0", "resnet18", weights=ResNet18_Weights.DEFAULT)
+    model = torch.hub.load("pytorch/vision:v0.10.0", "resnet18", pretrained=True)
     model.fc = torch.nn.Identity()
     model.eval()
 elif model_name == "resnet50":
     model = torch.hub.load("pytorch/vision:v0.10.0", "resnet50", pretrained=True)
     model.fc = torch.nn.Identity()
+    print(model)
     model.eval()
 elif model_name == "dinov2":
     model = torch.hub.load("facebookresearch/dino:main", "dino_v2_8")
@@ -95,3 +94,7 @@ for images, labels_batch in test_dataloader:
 # to numpy
 output = output.numpy()
 labels = labels.numpy()
+
+# save
+np.save(f"embeddings/output_{model_name}.npy", output)
+np.save(f"embeddings/labels.npy", labels)
