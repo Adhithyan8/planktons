@@ -49,10 +49,10 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True):
         if img_array.ndim < 3:
             img_array = np.repeat(img_array[..., np.newaxis], 3, -1)
 
-        img_tensor = torch.from_numpy(img_array)
+        img_tensor = torch.from_numpy(img_array).float()
         img_tensor = img_tensor.permute(2, 0, 1)
         img_tensor = transforms(img_tensor)
-        return img_tensor.float(), id
+        return img_tensor, id
 
     datapipe = datapipe.map(parse_data)
     if not hasattr(datapipe, 'set_length'):
