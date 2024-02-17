@@ -60,7 +60,6 @@ if model_name == "resnet18":
 elif model_name == "resnet50":
     model = torch.hub.load("pytorch/vision:v0.10.0", "resnet50", pretrained=True)
     model.fc = torch.nn.Identity()
-    print(model)
     model.eval()
 elif model_name == "dinov2":
     model = torch.hub.load("facebookresearch/dino:main", "dino_v2_8")
