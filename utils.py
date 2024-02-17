@@ -3,8 +3,23 @@ from PIL import Image
 import json
 import numpy as np
 import torch
-from torchdata.datapipes.iter import FileOpener
+from torchdata.datapipes import functional_datapipe
+from torchdata.datapipes.iter import FileOpener, IterDataPipe
 
+
+@functional_datapipe('set_length')
+class LengthSetterIterDataPipe(IterDataPipe):
+    def __init__(self, source_datapipe: IterDataPipe, length: int) -> None:
+        self.source_datapipe = source_datapipe
+        assert length >= 0
+        self.length = length
+
+    def __iter__(self) -> IterDataPipe:
+        yield from self.source_datapipe
+
+    def __len__(self) -> int:
+        return self.length
+        
 
 def get_datapipe(path, num_images, transforms, ignore_mix=True):
     dataset_path = path
@@ -14,7 +29,7 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True):
     def image_filter(data):
         file_name, _ = data
         if ignore_mix:
-            return fnmatch(file_name, "*.png") and file_name.split("\\")[-2] != "mix"
+            return fnmatch(file_name, "*.png") and file_name.split("/")[-2] != "mix"
         else:
             return fnmatch(file_name, "*.png")
 
@@ -28,7 +43,7 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True):
 
     def parse_data(data):
         file_name, file_content = data
-        id = label2id[file_name.split("\\")[-2]]
+        id = label2id[file_name.split("/")[-2]]
 
         img_array = np.array(Image.open(file_content))
         if img_array.ndim < 3:
@@ -40,6 +55,20 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True):
         return img_tensor.float(), id
 
     datapipe = datapipe.map(parse_data)
+    if not hasattr(datapipe, 'set_length'):
+        @functional_datapipe('set_length')
+        class LengthSetterIterDataPipe(IterDataPipe):
+            def __init__(self, source_datapipe: IterDataPipe, length: int) -> None:
+                self.source_datapipe = source_datapipe
+                assert length >= 0
+                self.length = length
+
+            def __iter__(self) -> IterDataPipe:
+                yield from self.source_datapipe
+
+            def __len__(self) -> int:
+                return self.length
+
     datapipe = datapipe.set_length(num_images)
 
     return datapipe

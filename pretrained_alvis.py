@@ -1,10 +1,6 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import openTSNE
 import torch
 from torchvision import transforms
-from sklearn.metrics import f1_score, accuracy_score
-from sklearn.neighbors import KNeighborsClassifier
 from torch.utils.data import DataLoader
 from utils import get_datapipe
 
@@ -32,13 +28,13 @@ test_transform = transforms.Compose(
     ]
 )
 train_datapipe = get_datapipe(
-    "planktons_zip\\2013.zip",
+    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
     num_images=115951,
     transforms=train_transform,
     ignore_mix=True,
 )
 test_datapipe = get_datapipe(
-    "planktons_zip\\2014.zip",
+    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
     num_images=63676,
     transforms=test_transform,
     ignore_mix=True,
@@ -53,5 +49,3 @@ test_dataloader = DataLoader(
 # model (pick one)
 if model_name == "resnet18":
     model = torch.hub.load("pytorch/vision:v0.10.0", "resnet18", pretrained=True)
-    print(model)
-

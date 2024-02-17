@@ -1,7 +1,10 @@
-#!/bin/bash
-#SBATCH --account=adhkal
+#!/bin/env bash
+#SBATCH -A naiss2023-5-75
 #SBATCH --gpus-per-node=A40:1
-#SBATCH --time=01:00:00
+#SBATCH -t 0-00:10:00
+#SBATCH -o %J_slurm.out
+#SBATCH -e %J_slurm.err
 
-module load pytorch
-~/my_ml_pytorch_script.py --epochs=12 --mnist_src /mimer/NOBACKUP/Datasets/MNIST/raw
+module purge
+module load PyTorch-bundle/1.12.1-foss-2022a-CUDA-11.7.0
+python pretrained_alvis.py
