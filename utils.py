@@ -31,7 +31,7 @@ def expand2square(pil_img, background_color):
         return result
 
 
-@functional_datapipe('set_length')
+@functional_datapipe("set_length")
 class LengthSetterIterDataPipe(IterDataPipe):
     def __init__(self, source_datapipe: IterDataPipe, length: int) -> None:
         self.source_datapipe = source_datapipe
@@ -43,7 +43,7 @@ class LengthSetterIterDataPipe(IterDataPipe):
 
     def __len__(self) -> int:
         return self.length
-        
+
 
 def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
     dataset_path = path
@@ -65,41 +65,28 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
     with open("labels.json") as f:
         label2id = json.load(f)
 
-    def parse_data(data):
+    def parse_data(data, padding=False):
         file_name, file_content = data
         id = label2id[file_name.split("/")[-2]]
+        if padding:
+            img_pil = Image.open(file_content)
+            img_pil = img_pil.convert("RGB")
+            img_pil = expand2square(img_pil, (200, 200, 200))
+            img_tensor = PILToTensor()(img_pil).float()
+        else:
+            img_array = np.array(Image.open(file_content))
+            if img_array.ndim < 3:
+                img_array = np.repeat(img_array[..., np.newaxis], 3, -1)
 
-        img_array = np.array(Image.open(file_content))
-        if img_array.ndim < 3:
-            img_array = np.repeat(img_array[..., np.newaxis], 3, -1)
-
-        img_tensor = torch.from_numpy(img_array).float()
-        img_tensor = img_tensor.permute(2, 0, 1)
+            img_tensor = torch.from_numpy(img_array).float()
+            img_tensor = img_tensor.permute(2, 0, 1)
         img_tensor = transforms(img_tensor)
         return img_tensor, id
 
-    def parse_data_padding(data):
-        file_name, file_content = data
-        id = label2id[file_name.split("/")[-2]]
+    datapipe = datapipe.map(parse_data, fn_kwargs={"padding": padding})
+    if not hasattr(datapipe, "set_length"):
 
-        img_pil = Image.open(file_content)
-        img_pil = img_pil.convert("RGB")
-        img_pil = expand2square(img_pil, (200, 200, 200))
-
-
-        if img_array.ndim < 3:
-            img_array = np.repeat(img_array[..., np.newaxis], 3, -1)
-
-        img_tensor = torch.from_numpy(img_array).float()
-        img_tensor = img_tensor.permute(2, 0, 1)
-        img_tensor = transforms(img_tensor)
-        return img_tensor, id
-    if padding:
-
-    else:
-        datapipe = datapipe.map(parse_data)
-    if not hasattr(datapipe, 'set_length'):
-        @functional_datapipe('set_length')
+        @functional_datapipe("set_length")
         class LengthSetterIterDataPipe(IterDataPipe):
             def __init__(self, source_datapipe: IterDataPipe, length: int) -> None:
                 self.source_datapipe = source_datapipe

@@ -19,31 +19,50 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_TRAIN = 115951
 NUM_TEST = 63676
 
-train_transform = transforms.Compose(
-    [
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
-)
-test_transform = transforms.Compose(
-    [
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
-)
+# config
+data_padding = False
+if data_padding:
+    train_transform = transforms.Compose(
+        [
+            transforms.Resize(224),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+    test_transform = transforms.Compose(
+        [
+            transforms.Resize(224),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+else:
+    train_transform = transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+    test_transform = transforms.Compose(
+        [
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+    
 train_datapipe = get_datapipe(
     "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
     num_images=NUM_TRAIN,
     transforms=train_transform,
     ignore_mix=True,
+    padding=data_padding,
 )
 test_datapipe = get_datapipe(
     "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
     num_images=NUM_TEST,
     transforms=test_transform,
     ignore_mix=True,
+    padding=data_padding,
 )
 train_dataloader = DataLoader(
     train_datapipe, batch_size=1024, shuffle=False, num_workers=12
