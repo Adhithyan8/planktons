@@ -1,3 +1,4 @@
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import numpy as np
 import torch
 import torch.hub
@@ -6,8 +7,15 @@ from torchvision import transforms
 
 from utils import get_datapipe
 
-model_name = "resnet18"
-data_padding = False
+# parser
+parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+parser.add_argument("-m", "--model", default="resnet18", help="Model architecture")
+parser.add_argument("-p", "--pad", action="store_true", help="Image padding during inference")
+args = vars(parser.parse_args())
+
+
+model_name = args["model"]
+data_padding = args["pad"]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
