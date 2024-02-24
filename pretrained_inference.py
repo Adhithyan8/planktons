@@ -6,7 +6,8 @@ from torchvision import transforms
 
 from utils import get_datapipe
 
-model_name = "resnet50"
+model_name = "vitb14-dinov2"
+data_padding = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
@@ -19,8 +20,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_TRAIN = 115951
 NUM_TEST = 63676
 
-# config
-data_padding = False
 if data_padding:
     train_transform = transforms.Compose(
         [
@@ -65,10 +64,10 @@ test_datapipe = get_datapipe(
     padding=data_padding,
 )
 train_dataloader = DataLoader(
-    train_datapipe, batch_size=1024, shuffle=False, num_workers=12
+    train_datapipe, batch_size=512, shuffle=False, num_workers=12
 )
 test_dataloader = DataLoader(
-    test_datapipe, batch_size=1024, shuffle=False, num_workers=12
+    test_datapipe, batch_size=512, shuffle=False, num_workers=12
 )
 
 # model (pick one)
@@ -80,8 +79,8 @@ elif model_name == "resnet50":
     model = torch.hub.load("pytorch/vision:v0.10.0", "resnet50", pretrained=True)
     model.fc = torch.nn.Identity()
     model.eval()
-elif model_name == "dinov2":
-    model = torch.hub.load("facebookresearch/dino:main", "dino_v2_8")
+elif model_name == "vitb14-dinov2":
+    model = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14_reg")
     model = model.eval()
 else:
     raise ValueError("Invalid model name")
@@ -91,8 +90,8 @@ if model_name == "resnet18":
     output = torch.empty((0, 512))
 elif model_name == "resnet50":
     output = torch.empty((0, 2048))
-elif model_name == "dinov2":
-    output = torch.empty((0, 384))
+elif model_name == "vitb14-dinov2":
+    output = torch.empty((0, 768))
 labels = torch.empty((0,))
 
 model.to(device)

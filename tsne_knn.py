@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.neighbors import KNeighborsClassifier
 
 # load the embeddings
-model_name = "resnet50"
+model_name = "vitb14-dinov2"
 output = np.load(f"embeddings/output_{model_name}.npy")
 labels = np.load("embeddings/labels.npy")
 

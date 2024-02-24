@@ -65,7 +65,7 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
     with open("labels.json") as f:
         label2id = json.load(f)
 
-    def parse_data(data, padding=False):
+    def parse_data(data):
         file_name, file_content = data
         id = label2id[file_name.split("/")[-2]]
         if padding:
@@ -80,10 +80,11 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
 
             img_tensor = torch.from_numpy(img_array).float()
             img_tensor = img_tensor.permute(2, 0, 1)
+        img_tensor = img_tensor.div(255)
         img_tensor = transforms(img_tensor)
         return img_tensor, id
 
-    datapipe = datapipe.map(parse_data, fn_kwargs={"padding": padding})
+    datapipe = datapipe.map(parse_data)
     if not hasattr(datapipe, "set_length"):
 
         @functional_datapipe("set_length")
