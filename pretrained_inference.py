@@ -6,8 +6,8 @@ from torchvision import transforms
 
 from utils import get_datapipe
 
-model_name = "vitb14-dinov2"
-data_padding = True
+model_name = "resnet18"
+data_padding = False
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
@@ -57,7 +57,7 @@ train_datapipe = get_datapipe(
     padding=data_padding,
 )
 test_datapipe = get_datapipe(
-    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
+    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
     num_images=NUM_TEST,
     transforms=test_transform,
     ignore_mix=True,

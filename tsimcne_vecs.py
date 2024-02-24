@@ -1,5 +1,3 @@
-import time
-
 import numpy as np
 import pandas as pd
 import torch
@@ -9,33 +7,8 @@ from torchvision import transforms as T
 from transformers import AutoImageProcessor, Dinov2Model
 from tsimcne.tsimcne import TSimCNE
 
-processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
-
-
 # gets both the train and test datasets combined
-class PlanktonsPT(Dataset):
-    def __init__(self, annotations_file):
-        self.img_labels = pd.read_csv(annotations_file)
 
-    def __len__(self):
-        return len(self.img_labels)
-
-    def __getitem__(self, idx):
-        img_path = self.img_labels.iloc[idx, 0]
-        with open(img_path, "rb") as f:
-            image = Image.open(f)
-            image = T.Resize((224, 224))(image)
-            image = processor(image)["pixel_values"][0]
-            image = image.transpose(1, 2, 0)
-            image = T.ToPILImage(mode="RGB")(image)
-        label = self.img_labels.iloc[idx, 1]
-        return image, label
-
-
-# both the train and test datasets combined
-planktons_dataset = PlanktonsPT(
-    annotations_file="/local_storage/users/adhkal/planktons_pytorch/annotations.csv"
-)
 
 
 # edit the forward method to return the pooler output
