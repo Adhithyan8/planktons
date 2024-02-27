@@ -105,7 +105,7 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
     return datapipe
 
 
-class InfoNCECosine(torch.nn.module):
+class InfoNCECosine(torch.nn.Module):
     def __init__(self, temperature=0.07):
         super(InfoNCECosine, self).__init__()
         self.temperature = temperature
