@@ -12,13 +12,14 @@ from sklearn.neighbors import KNeighborsClassifier
 # parser
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument("-m", "--model", default="resnet18", help="Model architecture")
+parser.add_argument("-v", "--visualize", action="store_true", help="Visualize 2D embedding with tSNE")
 args = vars(parser.parse_args())
 
 # load the embeddings
 model_name = args["model"]
+visualize = args["visualize"]
 output = np.load(f"embeddings/output_{model_name}.npy")
 labels = np.load("embeddings/labels.npy")
-visualize = False
 
 """
 2013: 421238
