@@ -15,6 +15,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # magic numbers
 NUM_TRAIN = 115951
 NUM_TEST = 63676
+NUM_TOTAL = NUM_TRAIN + NUM_TEST
 batch_size = 512
 n_epochs = 200
 
@@ -33,20 +34,13 @@ train_transform = transforms.Compose(
     ]
 )
 
-datapipe_1 = contrastive_datapipe(
-    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
-    num_images=NUM_TRAIN,
+datapipe = contrastive_datapipe(
+    ["/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip", 
+    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip"],
+    num_images=NUM_TOTAL,
     transforms=train_transform,
     ignore_mix=True,
 )
-datapipe_2 = contrastive_datapipe(
-    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
-    num_images=NUM_TEST,
-    transforms=train_transform,
-    ignore_mix=True,
-)
-# combine the two datapipe
-datapipe = datapipe_1.concat(datapipe_2)
 
 # create a dataloader
 

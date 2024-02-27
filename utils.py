@@ -105,9 +105,8 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
     return datapipe
 
 
-def contrastive_datapipe(path, num_images, transforms, ignore_mix=True):
-    dataset_path = path
-    fileopener = FileOpener([dataset_path], mode="b")
+def contrastive_datapipe(paths, num_images, transforms, ignore_mix=True):
+    fileopener = FileOpener(paths, mode="b")
     datapipe = fileopener.load_from_zip()
 
     def image_filter(data):
