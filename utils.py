@@ -103,3 +103,33 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
     datapipe = datapipe.set_length(num_images)
 
     return datapipe
+
+
+class InfoNCECosine(torch.nn.module):
+    def __init__(self, temperature=0.07):
+        super(InfoNCECosine, self).__init__()
+        self.temperature = temperature
+
+    def forward(self, features):
+        batch_size = features.shape[0] // 2
+
+        z1 = torch.nn.functional.normalize(features[:batch_size], dim=1)
+        z2 = torch.nn.functional.normalize(features[batch_size:], dim=1)
+
+        cos_z1_z1 = z1 @ z1.T / self.temperature
+        cos_z2_z2 = z2 @ z2.T / self.temperature
+        cos_z1_z2 = z1 @ z2.T / self.temperature
+
+        pos = cos_z1_z2.trace() / batch_size
+
+        # mask out the diagonal elements with float(-inf)
+        mask = torch.eye(batch_size, device=features.device).bool()
+        cos_z1_z1 = cos_z1_z1.masked_fill_(mask, float("-inf"))
+        cos_z2_z2 = cos_z2_z2.masked_fill_(mask, float("-inf"))
+
+        logsumexp_1 = torch.hstack((cos_z1_z1, cos_z1_z2)).logsumexp(dim=1).mean()
+        logsumexp_2 = torch.hstack((cos_z1_z2.T, cos_z2_z2)).logsumexp(dim=1).mean()
+
+        neg = (logsumexp_1 + logsumexp_2) / 2
+        loss = -(pos - neg)
+        return loss
