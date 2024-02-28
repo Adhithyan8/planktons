@@ -61,6 +61,14 @@ projection_head = torch.nn.Sequential(
     torch.nn.Linear(1024, 128),
 )
 
+# freeze some early layers
+for param in model.parameters():
+    param.requires_grad = False
+for param in model.layer4.parameters():
+    param.requires_grad = True
+for param in model.fc.parameters():
+    param.requires_grad = True
+
 # combine the model and the projection head
 model = torch.nn.Sequential(model, projection_head)
 
@@ -109,5 +117,5 @@ model = model[0]
 projection_head = model[1]
 
 # save the model
-torch.save(model.state_dict(), f"finetune_{model_name}.pth")
-torch.save(projection_head.state_dict(), f"finetune_{model_name}_ph.pth")
+torch.save(model.state_dict(), f"ft_{model_name}.pth")
+torch.save(projection_head.state_dict(), f"ft_{model_name}_ph.pth")
