@@ -17,7 +17,7 @@ NUM_TRAIN = 115951
 NUM_TEST = 63676
 NUM_TOTAL = NUM_TRAIN + NUM_TEST
 batch_size = 512
-n_epochs = 200
+n_epochs = 250
 
 model_name = "resnet18"
 
@@ -45,7 +45,7 @@ datapipe = contrastive_datapipe(
 # create a dataloader
 
 train_dataloader = DataLoader(
-    datapipe, batch_size=batch_size, shuffle=True, num_workers=12
+    datapipe, batch_size=batch_size, shuffle=True, num_workers=8
 )
 
 if model_name == "resnet18":
@@ -61,30 +61,21 @@ projection_head = torch.nn.Sequential(
     torch.nn.Linear(1024, 128),
 )
 
-# freeze some early layers
-for param in model.parameters():
-    param.requires_grad = False
-for param in model.layer4.parameters():
-    param.requires_grad = True
-for param in model.fc.parameters():
-    param.requires_grad = True
-
 # combine the model and the projection head
 model = torch.nn.Sequential(model, projection_head)
 
 # optimizer
-max_lr = 0.03 * batch_size / 256
 optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-4)
 
 # lr scheduler with linear warmup and cosine decay
 scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=max_lr,
+    max_lr=0.12,
     epochs=n_epochs,
-    steps_per_epoch=len(train_dataloader),
+    steps_per_epoch=352, # length of trainloader is incorrect so overwriting
     pct_start=0.05,
-    div_factor=1e4,
-    final_div_factor=1e4,
+    div_factor=1e3,
+    final_div_factor=1e3,
 )
 
 # loss
@@ -117,5 +108,5 @@ model = model[0]
 projection_head = model[1]
 
 # save the model
-torch.save(model.state_dict(), f"ft_{model_name}.pth")
-torch.save(projection_head.state_dict(), f"ft_{model_name}_ph.pth")
+torch.save(model.state_dict(), f"finetune_{model_name}.pth")
+torch.save(projection_head.state_dict(), f"finetune_{model_name}_ph.pth")
