@@ -29,7 +29,6 @@ train_transform = transforms.Compose(
             ratio=(1.0, 1.0),
         ),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ]
 )
@@ -43,16 +42,28 @@ datapipe = contrastive_datapipe(
 )
 
 # create a dataloader
-
 train_dataloader = DataLoader(
     datapipe, batch_size=batch_size, shuffle=True, num_workers=8
 )
 
 if model_name == "resnet18":
-    backbone = torch.hub.load("pytorch/vision:v0.12.0", "resnet18", pretrained=True, force_reload=True)
+    backbone = torch.hub.load(
+        "pytorch/vision:v0.9.0", 
+        "resnet18", 
+        pretrained=True, 
+        force_reload=True, 
+        )
     backbone.fc = torch.nn.Identity()
 else:
     raise ValueError(f"Model {model_name} not supported")
+
+# freeze early layers
+for param in backbone.parameters():
+    param.requires_grad = False
+for param in backbone.layer4.parameters():
+    param.requires_grad = True
+for param in backbone.fc.parameters():
+    param.requires_grad = True
 
 # projection head which will be removed after training
 projection_head = torch.nn.Sequential(
@@ -65,17 +76,17 @@ projection_head = torch.nn.Sequential(
 model = torch.nn.Sequential(backbone, projection_head)
 
 # optimizer
-optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-4)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
 
 # lr scheduler with linear warmup and cosine decay
 scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=0.06,
+    max_lr=0.12,
     epochs=n_epochs,
     steps_per_epoch=352, # length of trainloader is incorrect so overwriting
     pct_start=0.05,
-    div_factor=1e3,
-    final_div_factor=1e3,
+    div_factor=1e4,
+    final_div_factor=1e4,
 )
 
 # loss
@@ -100,8 +111,6 @@ for epoch in range(n_epochs):
         loss.backward()
         optimizer.step()
         scheduler.step()
-
-    print(f"Epoch {epoch+1}/{n_epochs}, Loss: {loss.item()}")
 
 # remove the projection head
 backbone = model[0]
