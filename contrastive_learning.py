@@ -49,8 +49,8 @@ train_dataloader = DataLoader(
 )
 
 if model_name == "resnet18":
-    model = torch.hub.load("pytorch/vision:v0.9.0", "resnet18", pretrained=True)
-    model.fc = torch.nn.Identity()
+    backbone = torch.hub.load("pytorch/vision:v0.12.0", "resnet18", pretrained=True, force_reload=True)
+    backbone.fc = torch.nn.Identity()
 else:
     raise ValueError(f"Model {model_name} not supported")
 
@@ -62,7 +62,7 @@ projection_head = torch.nn.Sequential(
 )
 
 # combine the model and the projection head
-model = torch.nn.Sequential(model, projection_head)
+model = torch.nn.Sequential(backbone, projection_head)
 
 # optimizer
 optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-4)
@@ -70,7 +70,7 @@ optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_dec
 # lr scheduler with linear warmup and cosine decay
 scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=0.12,
+    max_lr=0.06,
     epochs=n_epochs,
     steps_per_epoch=352, # length of trainloader is incorrect so overwriting
     pct_start=0.05,
@@ -104,9 +104,9 @@ for epoch in range(n_epochs):
     print(f"Epoch {epoch+1}/{n_epochs}, Loss: {loss.item()}")
 
 # remove the projection head
-model = model[0]
+backbone = model[0]
 projection_head = model[1]
 
 # save the model
-torch.save(model.state_dict(), f"finetune_{model_name}.pth")
-torch.save(projection_head.state_dict(), f"finetune_{model_name}_ph.pth")
+torch.save(backbone.state_dict(), f"finetune_{model_name}.pth")
+torch.save(projection_head.state_dict(), f"finetune_{model_name}_head.pth")
