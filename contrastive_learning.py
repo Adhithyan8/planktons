@@ -25,7 +25,7 @@ train_transform = transforms.Compose(
     [
         transforms.RandomResizedCrop(
             size=224,
-            scale=(0.08, 1.0),
+            scale=(0.1, 1.0),
             ratio=(1.0, 1.0),
         ),
         transforms.RandomHorizontalFlip(),
@@ -34,8 +34,10 @@ train_transform = transforms.Compose(
 )
 
 datapipe = contrastive_datapipe(
-    ["/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip", 
-    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip"],
+    [
+        "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
+        "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
+    ],
     num_images=NUM_TOTAL,
     transforms=train_transform,
     ignore_mix=True,
@@ -48,11 +50,11 @@ train_dataloader = DataLoader(
 
 if model_name == "resnet18":
     backbone = torch.hub.load(
-        "pytorch/vision:v0.9.0", 
-        "resnet18", 
-        pretrained=True, 
-        force_reload=True, 
-        )
+        "pytorch/vision:v0.9.0",
+        "resnet18",
+        pretrained=True,
+        force_reload=True,
+    )
     backbone.fc = torch.nn.Identity()
 else:
     raise ValueError(f"Model {model_name} not supported")
@@ -83,7 +85,7 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=0.12,
     epochs=n_epochs,
-    steps_per_epoch=352, # length of trainloader is incorrect so overwriting
+    steps_per_epoch=352,  # length of trainloader is incorrect so overwriting
     pct_start=0.05,
     div_factor=1e4,
     final_div_factor=1e4,
@@ -102,7 +104,7 @@ print(
 # train the model
 model.train().to(device)
 for epoch in range(n_epochs):
-    for img1, img2, _ in train_dataloader:
+    for i, (img1, img2, _) in enumerate(train_dataloader):
         img1, img2 = img1.to(device), img2.to(device)
         optimizer.zero_grad()
         img = torch.cat((img1, img2), dim=0)
@@ -112,10 +114,11 @@ for epoch in range(n_epochs):
         optimizer.step()
         scheduler.step()
 
-# remove the projection head
-backbone = model[0]
-projection_head = model[1]
+        if i % 100 == 0:
+            print(
+                f"Epoch [{epoch+1}/{n_epochs}], Step [{i+1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
+            )
 
 # save the model
-torch.save(backbone.state_dict(), f"finetune_{model_name}.pth")
-torch.save(projection_head.state_dict(), f"finetune_{model_name}_head.pth")
+torch.save(model[0].state_dict(), f"finetune_{model_name}_backbone.pth")
+torch.save(model[1].state_dict(), f"finetune_{model_name}_head.pth")
