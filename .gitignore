@@ -6,3 +6,4 @@ embeddings/
 lightning_logs/
 *.err
 *.out
+*.pth

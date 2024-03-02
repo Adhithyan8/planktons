@@ -16,10 +16,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_TRAIN = 115951
 NUM_TEST = 63676
 NUM_TOTAL = NUM_TRAIN + NUM_TEST
-batch_size = 512
+batch_size = 1024
 n_epochs = 250
 
-model_name = "resnet18"
+model_name = "vitb14-dinov2"
 
 train_transform = transforms.Compose(
     [
@@ -56,23 +56,45 @@ if model_name == "resnet18":
         force_reload=True,
     )
     backbone.fc = torch.nn.Identity()
+elif model_name == "vitb14-dinov2":
+    backbone = torch.hub.load(
+        "facebookresearch/dinov2",
+        "dinov2_vitb14_reg",
+    )
 else:
     raise ValueError(f"Model {model_name} not supported")
 
 # freeze early layers
-for param in backbone.parameters():
-    param.requires_grad = False
-for param in backbone.layer4.parameters():
-    param.requires_grad = True
-for param in backbone.fc.parameters():
-    param.requires_grad = True
+if model_name == "resnet18":
+    for param in backbone.parameters():
+        param.requires_grad = False
+    for param in backbone.layer4.parameters():
+        param.requires_grad = True
+    for param in backbone.fc.parameters():
+        param.requires_grad = True
+elif model_name == "vitb14-dinov2":
+    for param in backbone.parameters():
+        param.requires_grad = False
+    for param in backbone.blocks.11.parameters():
+        param.requires_grad = True
+else:
+    raise ValueError(f"Model {model_name} not supported")
 
 # projection head which will be removed after training
-projection_head = torch.nn.Sequential(
-    torch.nn.Linear(512, 1024),
-    torch.nn.ReLU(),
-    torch.nn.Linear(1024, 128),
-)
+if model_name == "resnet18":
+    projection_head = torch.nn.Sequential(
+        torch.nn.Linear(512, 1024),
+        torch.nn.ReLU(),
+        torch.nn.Linear(1024, 128),
+    )
+elif model_name == "vitb14-dinov2":
+    projection_head = torch.nn.Sequential(
+        torch.nn.Linear(768, 1024),
+        torch.nn.ReLU(),
+        torch.nn.Linear(1024, 128),
+    )
+else:
+    raise ValueError(f"Model {model_name} not supported")
 
 # combine the model and the projection head
 model = torch.nn.Sequential(backbone, projection_head)
@@ -81,11 +103,12 @@ model = torch.nn.Sequential(backbone, projection_head)
 optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
 
 # lr scheduler with linear warmup and cosine decay
+lr = 0.03 * (batch_size/256)
 scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
-    max_lr=0.12,
+    max_lr=lr,
     epochs=n_epochs,
-    steps_per_epoch=352,  # length of trainloader is incorrect so overwriting
+    steps_per_epoch=int(len(train_dataloader)) + 1, # 1 due to a weird bug in datapipe
     pct_start=0.05,
     div_factor=1e4,
     final_div_factor=1e4,
