@@ -5,6 +5,8 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.neighbors import KNeighborsClassifier
 
+from utils import get_datapipe
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
