@@ -31,20 +31,20 @@ train_datapipe = get_datapipe(
     num_images=NUM_TRAIN,
     transforms=test_transform,
     ignore_mix=True,
-    padding=True,
+    padding=False,
 )
 test_datapipe = get_datapipe(
     "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
     num_images=NUM_TEST,
     transforms=test_transform,
     ignore_mix=True,
-    padding=True,
+    padding=False,
 )
 train_dataloader = DataLoader(
-    train_datapipe, batch_size=512, shuffle=False, num_workers=8
+    train_datapipe, batch_size=1, shuffle=False, num_workers=4
 )
 test_dataloader = DataLoader(
-    test_datapipe, batch_size=512, shuffle=False, num_workers=8
+    test_datapipe, batch_size=1, shuffle=False, num_workers=4
 )
 
 backbone = torch.hub.load("pytorch/vision:v0.9.0", "resnet18", pretrained=False)
@@ -69,7 +69,10 @@ for config in ["finetune", "fulltrain"]:
         model.eval()
 
         # store output
-        output = torch.empty((0, 512))
+        if outspace == "backbone":
+            output = torch.empty((0, 512))
+        else:
+            output = torch.empty((0, 128))
         labels = torch.empty((0,))
 
         model.to(device)
@@ -95,9 +98,9 @@ for config in ["finetune", "fulltrain"]:
 
         # knn
         if outspace == "backbone":
-            knn = KNeighborsClassifier(n_neighbors=5, n_jobs=8, metric="cosine")
+            knn = KNeighborsClassifier(n_neighbors=5, n_jobs=4, metric="cosine")
         else:
-            knn = KNeighborsClassifier(n_neighbors=5, n_jobs=8, metric="minkowski")
+            knn = KNeighborsClassifier(n_neighbors=5, n_jobs=4, metric="minkowski")
         knn.fit(output_train, labels[:NUM_TRAIN])
 
         # test

@@ -1,7 +1,7 @@
 #!/bin/env bash
 #SBATCH -A naiss2024-5-84
-#SBATCH --gpus-per-node=A40:1
-#SBATCH -t 0-01:00:00
+#SBATCH --gpus-per-node=T4:1
+#SBATCH -t 0-02:00:00
 #SBATCH -o %J_slurm.out
 #SBATCH -e %J_slurm.err
 

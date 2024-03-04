@@ -53,7 +53,6 @@ if model_name == "resnet18":
         "pytorch/vision:v0.9.0",
         "resnet18",
         pretrained=True,
-        force_reload=True,
     )
     backbone.fc = torch.nn.Identity()
 elif model_name == "vitb14-dinov2":
