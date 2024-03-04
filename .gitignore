@@ -3,7 +3,7 @@ __pycache__/
 planktons_dataset/
 planktons_zip/
 embeddings/
-lightning_logs/
 *.err
 *.out
 *.pth
+template*
