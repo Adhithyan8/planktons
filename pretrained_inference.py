@@ -9,7 +9,9 @@ from utils import get_datapipe
 # parser
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument("-m", "--model", default="resnet18", help="Model architecture")
-parser.add_argument("-p", "--pad", action="store_true", help="Image padding during inference")
+parser.add_argument(
+    "-p", "--pad", action="store_true", help="Image padding during inference"
+)
 args = vars(parser.parse_args())
 
 
@@ -55,7 +57,7 @@ else:
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
     )
-    
+
 train_datapipe = get_datapipe(
     "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
     num_images=NUM_TRAIN,
