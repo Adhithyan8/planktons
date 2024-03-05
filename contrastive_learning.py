@@ -1,8 +1,8 @@
 import torch
-from torchvision import transforms
 from torch.utils.data import DataLoader
+from torchvision import transforms
 
-from utils import contrastive_datapipe, InfoNCECosine
+from utils import InfoNCECosine, contrastive_datapipe
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -19,14 +19,13 @@ NUM_TOTAL = NUM_TRAIN + NUM_TEST
 batch_size = 1024
 n_epochs = 250
 
-model_name = "vitb14-dinov2"
+model_name = "resnet18"
 
 train_transform = transforms.Compose(
     [
         transforms.RandomResizedCrop(
             size=224,
-            scale=(0.1, 1.0),
-            ratio=(1.0, 1.0),
+            scale=(0.8, 1.0),
         ),
         transforms.RandomHorizontalFlip(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
@@ -52,14 +51,9 @@ if model_name == "resnet18":
     backbone = torch.hub.load(
         "pytorch/vision:v0.9.0",
         "resnet18",
-        pretrained=True,
+        weights="DEFAULT",
     )
     backbone.fc = torch.nn.Identity()
-elif model_name == "vitb14-dinov2":
-    backbone = torch.hub.load(
-        "facebookresearch/dinov2",
-        "dinov2_vitb14_reg",
-    )
 else:
     raise ValueError(f"Model {model_name} not supported")
 
@@ -69,13 +63,6 @@ if model_name == "resnet18":
         param.requires_grad = False
     for param in backbone.layer4.parameters():
         param.requires_grad = True
-    for param in backbone.fc.parameters():
-        param.requires_grad = True
-elif model_name == "vitb14-dinov2":
-    for param in backbone.parameters():
-        param.requires_grad = False
-    for param in backbone.blocks[-1].parameters():
-        param.requires_grad = True
 else:
     raise ValueError(f"Model {model_name} not supported")
 
@@ -83,12 +70,6 @@ else:
 if model_name == "resnet18":
     projection_head = torch.nn.Sequential(
         torch.nn.Linear(512, 1024),
-        torch.nn.ReLU(),
-        torch.nn.Linear(1024, 128),
-    )
-elif model_name == "vitb14-dinov2":
-    projection_head = torch.nn.Sequential(
-        torch.nn.Linear(768, 1024),
         torch.nn.ReLU(),
         torch.nn.Linear(1024, 128),
     )
@@ -107,10 +88,10 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=lr,
     epochs=n_epochs,
-    steps_per_epoch=int(len(train_dataloader)) + 1,  # 1 due to a weird bug in datapipe
+    steps_per_epoch=int(len(train_dataloader)) + 1,  # 1 due to a weird bug
     pct_start=0.05,
-    div_factor=1e4,
-    final_div_factor=1e4,
+    div_factor=1e4,  # start close to 0
+    final_div_factor=1e4,  # end close to 0
 )
 
 # loss

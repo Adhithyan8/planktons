@@ -1,4 +1,5 @@
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -83,16 +84,14 @@ test_dataloader = DataLoader(
 if model_name == "resnet18":
     model = torch.hub.load("pytorch/vision:v0.10.0", "resnet18", pretrained=True)
     model.fc = torch.nn.Identity()
-    model.eval()
 elif model_name == "resnet50":
     model = torch.hub.load("pytorch/vision:v0.10.0", "resnet50", pretrained=True)
     model.fc = torch.nn.Identity()
-    model.eval()
 elif model_name == "vitb14-dinov2":
     model = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14_reg")
-    model = model.eval()
 else:
     raise ValueError("Invalid model name")
+model.eval()
 
 # store output
 if model_name == "resnet18":

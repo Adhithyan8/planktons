@@ -1,23 +1,26 @@
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+
 import matplotlib
-
-matplotlib.use("Agg")
-
 import matplotlib.pyplot as plt
 import numpy as np
 import openTSNE
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.neighbors import KNeighborsClassifier
 
+matplotlib.use("Agg")
+
 # parser
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument("-m", "--model", default="resnet18", help="Model architecture")
-parser.add_argument("-v", "--visualize", action="store_true", help="Visualize 2D embedding with tSNE")
+parser.add_argument(
+    "-v", "--visualize", action="store_true", help="Visualize 2D embedding with tSNE"
+)
 args = vars(parser.parse_args())
 
 # load the embeddings
 model_name = args["model"]
 visualize = args["visualize"]
+head = True if "head" in model_name else False
 output = np.load(f"embeddings/output_{model_name}.npy")
 labels = np.load("embeddings/labels.npy")
 
@@ -31,7 +34,7 @@ labels = np.load("embeddings/labels.npy")
 NUM_TRAIN = 115951
 NUM_TEST = 63676
 
-if visualize :
+if visualize:
     # tsne
     affinities_multiscale_mixture = openTSNE.affinity.Multiscale(
         output,
@@ -64,7 +67,10 @@ output_train = output[:NUM_TRAIN]
 output_test = output[NUM_TRAIN:]
 
 # knn
-knn = KNeighborsClassifier(n_neighbors=5, n_jobs=30, metric="cosine")
+if head:
+    knn = KNeighborsClassifier(n_neighbors=5, n_jobs=8, metric="minkowski")
+else:
+    knn = KNeighborsClassifier(n_neighbors=5, n_jobs=8, metric="cosine")
 knn.fit(output_train, labels[:NUM_TRAIN])
 
 # test
@@ -72,6 +78,7 @@ preds = knn.predict(output_test)
 f1 = f1_score(labels[NUM_TRAIN:], preds, average="macro")
 acc = accuracy_score(labels[NUM_TRAIN:], preds)
 
+print(f"{model_name}")
 print(f"Accuracy: {acc}")
 print(f"F1 score: {f1}")
 

@@ -12,11 +12,8 @@ def expand2square(pil_img, background_color):
     """
     To resize the images to 224x224, and convert to RGB
     """
-    # convert pil_img to "rgb"
-    if pil_img.mode != "RGB":
-        pil_img = pil_img.convert("RGB")
     # resize to thumbnail (224, 224)
-    pil_img.thumbnail((224, 224), Image.Resampling.LANCZOS)
+    pil_img.thumbnail((224, 224), Image.Resampling.BILINEAR)
     # create new image of desired size and color
     width, height = pil_img.size
     if width == height:
@@ -38,7 +35,7 @@ class LengthSetterIterDataPipe(IterDataPipe):
         assert length >= 0
         self.length = length
 
-    def __iter__(self) -> IterDataPipe:
+    def __iter__(self) -> IterDataPipe:  # type: ignore
         yield from self.source_datapipe
 
     def __len__(self) -> int:
@@ -94,7 +91,7 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
                 assert length >= 0
                 self.length = length
 
-            def __iter__(self) -> IterDataPipe:
+            def __iter__(self) -> IterDataPipe:  # type: ignore
                 yield from self.source_datapipe
 
             def __len__(self) -> int:
@@ -148,7 +145,7 @@ def contrastive_datapipe(paths, num_images, transforms, ignore_mix=True):
                 assert length >= 0
                 self.length = length
 
-            def __iter__(self) -> IterDataPipe:
+            def __iter__(self) -> IterDataPipe:  # type: ignore
                 yield from self.source_datapipe
 
             def __len__(self) -> int:
