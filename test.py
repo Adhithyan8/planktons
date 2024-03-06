@@ -25,7 +25,7 @@ train_transform = transforms.Compose(
     [
         transforms.RandomResizedCrop(
             size=224,
-            scale=(0.1, 1.0),
+            scale=(0.5, 1.0),
         ),
         transforms.RandomHorizontalFlip(),
     ]
@@ -50,7 +50,7 @@ contrastivepipe = contrastive_datapipe(
 
 # dataloader = DataLoader(datapipe, batch_size=1, shuffle=True, num_workers=8)
 train_dataloader = DataLoader(
-    contrastivepipe, batch_size=8, shuffle=True, num_workers=8
+    contrastivepipe, batch_size=1, shuffle=True, num_workers=8
 )
 
 # visualize the data
@@ -65,18 +65,20 @@ import matplotlib.pyplot as plt
 #     ax[i // 4, i % 4].set_title(label.item())
 #     ax[i // 4, i % 4].axis("off")
 
-fig, ax = plt.subplots(4, 4, figsize=(12, 12))
+fig, ax = plt.subplots(3, 10, figsize=(24, 8))
 
-for imgs_1, imgs_2, labels in train_dataloader:
-    for i in range(16):
-        # show img_1s, img_2s, and labels
-        ax[i // 4, i % 4].imshow(imgs_1[i].squeeze().permute(1, 2, 0))
-        ax[i // 4, i % 4].set_title(f"{labels[i].item()} (1)")
-        ax[i // 4, i % 4].axis("off")
-        ax[i // 4, i % 4 + 4].imshow(imgs_2[i].squeeze().permute(1, 2, 0))
-        ax[i // 4, i % 4 + 4].set_title(f"{labels[i].item()} (2)")
-        ax[i // 4, i % 4 + 4].axis("off")
-    break
+for i, (imgs, imgs_1, imgs_2, labels) in enumerate(train_dataloader):
+    if i == 10:
+        break
+    ax[0, i].imshow(imgs.squeeze().permute(1, 2, 0))
+    ax[0, i].set_title(labels.item())
+    ax[0, i].axis("off")
+    ax[1, i].imshow(imgs_1.squeeze().permute(1, 2, 0))
+    ax[1, i].set_title(f"{labels.item()} - 1")
+    ax[1, i].axis("off")
+    ax[2, i].imshow(imgs_2.squeeze().permute(1, 2, 0))
+    ax[2, i].set_title(f"{labels.item()} - 2")
+    ax[2, i].axis("off")
 
 # save the plot
 plt.savefig("test.png")
