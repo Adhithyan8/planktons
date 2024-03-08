@@ -40,11 +40,11 @@ if visualize:
         output,
         perplexities=[50, 500],
         metric="cosine",
-        n_jobs=30,
+        n_jobs=8,
         random_state=3,
     )
     init = openTSNE.initialization.pca(output, random_state=42)
-    embedding = openTSNE.TSNE(n_jobs=30).fit(
+    embedding = openTSNE.TSNE(n_jobs=8).fit(
         affinities=affinities_multiscale_mixture,
         initialization=init,
     )

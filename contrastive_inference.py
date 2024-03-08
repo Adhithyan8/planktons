@@ -2,8 +2,6 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
 import numpy as np
 import torch
-from sklearn.metrics import accuracy_score, f1_score
-from sklearn.neighbors import KNeighborsClassifier
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -12,7 +10,7 @@ from utils import get_datapipe
 # parser
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument("-c", "--config", default="finetune", help="finetune or fulltrain")
-parser.add_argument("-h", "--head", action="store_true", help="Use projection head")
+parser.add_argument("--head", action="store_true", help="Use projection head")
 args = vars(parser.parse_args())
 
 config = args["config"]

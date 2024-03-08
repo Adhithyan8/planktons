@@ -1,43 +1,47 @@
-import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from utils import get_datapipe, contrastive_datapipe
+from utils import contrastive_datapipe, get_datapipe
 
 # magic numbers
 NUM_TRAIN = 115951
 NUM_TEST = 636764
 NUM_TOTAL = NUM_TRAIN + NUM_TEST
 
+
+empty_transform = transforms.Compose([])
 pad_transform = transforms.Compose(
     [
-        transforms.Resize(224),
+        transforms.Resize(128),
     ]
 )
-
 no_pad_transform = transforms.Compose(
     [
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
+        transforms.Resize(128),
+        transforms.CenterCrop(112),
     ]
 )
 train_transform = transforms.Compose(
     [
+        transforms.RandomRotation(
+            180, fill=0.784, interpolation=transforms.InterpolationMode.BILINEAR
+        ),
         transforms.RandomResizedCrop(
-            size=224,
-            scale=(0.5, 1.0),
+            size=128,
+            scale=(0.6, 1.0),
         ),
         transforms.RandomHorizontalFlip(),
     ]
 )
 
-# datapipe = get_datapipe(
-#     "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
-#     num_images=NUM_TRAIN,
-#     transforms=pad_transform,
-#     ignore_mix=True,
-#     padding=True,
-# )
+datapipe = get_datapipe(
+    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
+    num_images=NUM_TRAIN,
+    transforms=empty_transform,
+    ignore_mix=True,
+    padding=True,
+)
+
 contrastivepipe = contrastive_datapipe(
     [
         "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
@@ -48,7 +52,7 @@ contrastivepipe = contrastive_datapipe(
     ignore_mix=True,
 )
 
-# dataloader = DataLoader(datapipe, batch_size=1, shuffle=True, num_workers=8)
+dataloader = DataLoader(datapipe, batch_size=1, shuffle=True, num_workers=8)
 train_dataloader = DataLoader(
     contrastivepipe, batch_size=1, shuffle=True, num_workers=8
 )
@@ -56,14 +60,18 @@ train_dataloader = DataLoader(
 # visualize the data
 import matplotlib.pyplot as plt
 
-# fig, ax = plt.subplots(4, 4, figsize=(12, 12))
+fig, ax = plt.subplots(1, 5, figsize=(20, 5))
 
-# for i, (img, label) in enumerate(dataloader):
-#     if i == 16:
-#         break
-#     ax[i // 4, i % 4].imshow(img.squeeze().permute(1, 2, 0))
-#     ax[i // 4, i % 4].set_title(label.item())
-#     ax[i // 4, i % 4].axis("off")
+for img, label in dataloader:
+    ax[0].imshow(img.squeeze().permute(1, 2, 0))
+    ax[1].imshow(transforms.Resize(256)(img).squeeze().permute(1, 2, 0))
+    ax[2].imshow(transforms.Resize(128)(img).squeeze().permute(1, 2, 0))
+    ax[3].imshow(transforms.Resize(64)(img).squeeze().permute(1, 2, 0))
+    ax[4].imshow(transforms.Resize(32)(img).squeeze().permute(1, 2, 0))
+    break
+
+plt.savefig("samples.png")
+plt.close()
 
 fig, ax = plt.subplots(3, 10, figsize=(24, 8))
 
@@ -82,3 +90,4 @@ for i, (imgs, imgs_1, imgs_2, labels) in enumerate(train_dataloader):
 
 # save the plot
 plt.savefig("test.png")
+plt.close()

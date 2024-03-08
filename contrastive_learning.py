@@ -88,7 +88,7 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=lr,
     epochs=n_epochs,
-    steps_per_epoch=int(len(train_dataloader)) + 1,  # 1 due to a weird bug
+    steps_per_epoch=176,  # weird bug
     pct_start=0.05,
     div_factor=1e4,  # start close to 0
     final_div_factor=1e4,  # end close to 0
@@ -118,10 +118,8 @@ for epoch in range(n_epochs):
         scheduler.step()
 
         if i % 100 == 0:
-            print(
-                f"Epoch [{epoch+1}/{n_epochs}], Step [{i+1}/{len(train_dataloader)}], Loss: {loss.item():.4f}"
-            )
+            print(f"Epoch [{epoch+1}/{n_epochs}], Loss: {loss.item():.4f}")
 
 # save the model
-torch.save(model[0].state_dict(), f"finetune_{model_name}_backbone.pth")
-torch.save(model[1].state_dict(), f"finetune_{model_name}_head.pth")
+torch.save(model[0].state_dict(), f"finetune08_{model_name}_backbone.pth")
+torch.save(model[1].state_dict(), f"finetune08_{model_name}_head.pth")
