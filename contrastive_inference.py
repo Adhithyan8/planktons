@@ -39,14 +39,14 @@ train_datapipe = get_datapipe(
     num_images=NUM_TRAIN,
     transforms=transform,
     ignore_mix=True,
-    padding=True,
+    padding="reflect",
 )
 test_datapipe = get_datapipe(
     "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
     num_images=NUM_TEST,
     transforms=transform,
     ignore_mix=True,
-    padding=True,
+    padding="reflect",
 )
 
 train_dataloader = DataLoader(

@@ -23,12 +23,9 @@ no_pad_transform = transforms.Compose(
 )
 train_transform = transforms.Compose(
     [
-        transforms.RandomRotation(
-            180, fill=0.784, interpolation=transforms.InterpolationMode.BILINEAR
-        ),
         transforms.RandomResizedCrop(
             size=128,
-            scale=(0.6, 1.0),
+            scale=(0.2, 1.0),
         ),
         transforms.RandomHorizontalFlip(),
     ]
@@ -39,7 +36,7 @@ datapipe = get_datapipe(
     num_images=NUM_TRAIN,
     transforms=empty_transform,
     ignore_mix=True,
-    padding=True,
+    padding="reflect",
 )
 
 contrastivepipe = contrastive_datapipe(
@@ -60,18 +57,18 @@ train_dataloader = DataLoader(
 # visualize the data
 import matplotlib.pyplot as plt
 
-fig, ax = plt.subplots(1, 5, figsize=(20, 5))
+# fig, ax = plt.subplots(1, 5, figsize=(20, 5))
 
-for img, label in dataloader:
-    ax[0].imshow(img.squeeze().permute(1, 2, 0))
-    ax[1].imshow(transforms.Resize(256)(img).squeeze().permute(1, 2, 0))
-    ax[2].imshow(transforms.Resize(128)(img).squeeze().permute(1, 2, 0))
-    ax[3].imshow(transforms.Resize(64)(img).squeeze().permute(1, 2, 0))
-    ax[4].imshow(transforms.Resize(32)(img).squeeze().permute(1, 2, 0))
-    break
+# for img, label in dataloader:
+#     ax[0].imshow(img.squeeze().permute(1, 2, 0))
+#     ax[1].imshow(transforms.Resize(256)(img).squeeze().permute(1, 2, 0))
+#     ax[2].imshow(transforms.Resize(128)(img).squeeze().permute(1, 2, 0))
+#     ax[3].imshow(transforms.Resize(64)(img).squeeze().permute(1, 2, 0))
+#     ax[4].imshow(transforms.Resize(32)(img).squeeze().permute(1, 2, 0))
+#     break
 
-plt.savefig("samples.png")
-plt.close()
+# plt.savefig("samples.png")
+# plt.close()
 
 fig, ax = plt.subplots(3, 10, figsize=(24, 8))
 

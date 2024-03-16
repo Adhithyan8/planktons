@@ -11,7 +11,7 @@ from utils import get_datapipe
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument("-m", "--model", default="resnet18", help="Model architecture")
 parser.add_argument(
-    "-p", "--pad", action="store_true", help="Image padding during inference"
+    "-p", "--pad", default="reflect", help="Image padding during inference"
 )
 args = vars(parser.parse_args())
 
@@ -30,7 +30,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_TRAIN = 115951
 NUM_TEST = 63676
 
-if data_padding:
+if data_padding == "constant" or data_padding == "reflect":
     train_transform = transforms.Compose(
         [
             transforms.Resize(224),

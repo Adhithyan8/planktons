@@ -6,6 +6,7 @@ import torch
 from torchdata.datapipes import functional_datapipe
 from torchdata.datapipes.iter import FileOpener, IterDataPipe
 from torchvision.transforms import PILToTensor
+import albumentations as A
 
 
 def expand2square(pil_img, background_color):
@@ -42,7 +43,7 @@ class LengthSetterIterDataPipe(IterDataPipe):
         return self.length
 
 
-def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
+def get_datapipe(path, num_images, transforms, ignore_mix=True, padding="none"):
     dataset_path = path
     fileopener = FileOpener([dataset_path], mode="b")
     datapipe = fileopener.load_from_zip()
@@ -65,11 +66,17 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding=False):
     def parse_data(data):
         file_name, file_content = data
         id = label2id[file_name.split("/")[-2]]
-        if padding:
+        if padding=="constant":
             img_pil = Image.open(file_content)
             img_pil = img_pil.convert("RGB")
             img_pil = expand2square(img_pil, (200, 200, 200))
             img_tensor = PILToTensor()(img_pil).float()
+        elif padding=="reflect":
+            img_array = np.array(Image.open(file_content).convert("RGB"))
+            img_array = A.PadIfNeeded(img_array.shape[1], img_array.shape[0])(
+                image=img_array
+            )["image"]
+            img_tensor = torch.from_numpy(img_array).float().permute(2, 0, 1)
         else:
             img_array = np.array(Image.open(file_content))
             if img_array.ndim < 3:
@@ -124,13 +131,11 @@ def contrastive_datapipe(paths, num_images, transforms, ignore_mix=True):
     def parse_data(data):
         file_name, file_content = data
         id = label2id[file_name.split("/")[-2]]
-        img_array = np.array(Image.open(file_content))
-        if img_array.ndim < 3:
-            img_array = np.repeat(img_array[..., np.newaxis], 3, -1)
-
-        img_tensor = torch.from_numpy(img_array).float()
-        img_tensor = img_tensor.permute(2, 0, 1)
-        img_tensor = img_tensor.div(255)
+        img_array = np.array(Image.open(file_content).convert("RGB"))
+        img_array = A.PadIfNeeded(img_array.shape[1], img_array.shape[0])(
+            image=img_array
+        )["image"]
+        img_tensor = torch.from_numpy(img_array).float().div(255).permute(2, 0, 1)
         img_tensor_1 = transforms(img_tensor)
         img_tensor_2 = transforms(img_tensor)
         return img_tensor_1, img_tensor_2, id
