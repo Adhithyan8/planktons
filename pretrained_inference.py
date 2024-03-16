@@ -1,11 +1,11 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
+import albumentations as A
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from torchvision import transforms
 
-from utils import get_datapipe
+from utils import inference_datapipe, Padding
 
 # parser
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -17,7 +17,12 @@ args = vars(parser.parse_args())
 
 
 model_name = args["model"]
-data_padding = args["pad"]
+if args["pad"] == "constant":
+    padding = Padding.CONSTANT
+elif args["pad"] == "reflect":
+    padding = Padding.REFLECT
+else:
+    padding = None
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
@@ -29,56 +34,30 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # magic numbers
 NUM_TRAIN = 115951
 NUM_TEST = 63676
+NUM_TOTAL = NUM_TRAIN + NUM_TEST
 
-if data_padding == "constant" or data_padding == "reflect":
-    train_transform = transforms.Compose(
-        [
-            transforms.Resize(224),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
-    test_transform = transforms.Compose(
-        [
-            transforms.Resize(224),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
-else:
-    train_transform = transforms.Compose(
-        [
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
-    test_transform = transforms.Compose(
-        [
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
 
-train_datapipe = get_datapipe(
-    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
-    num_images=NUM_TRAIN,
-    transforms=train_transform,
-    ignore_mix=True,
-    padding=data_padding,
+inference_transform = A.Compose(
+    [
+        A.ToRGB(),
+        A.ToFloat(max_value=255),
+        A.Normalize(),
+        A.Resize(256, 256),
+    ]
 )
-test_datapipe = get_datapipe(
-    "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
-    num_images=NUM_TEST,
-    transforms=test_transform,
-    ignore_mix=True,
-    padding=data_padding,
+
+datapipe = inference_datapipe(
+    [
+        "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
+        "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
+    ],
+    num_images=NUM_TOTAL,
+    transforms=inference_transform,
+    padding=padding,
 )
-train_dataloader = DataLoader(
-    train_datapipe, batch_size=512, shuffle=False, num_workers=12
-)
-test_dataloader = DataLoader(
-    test_datapipe, batch_size=512, shuffle=False, num_workers=12
-)
+
+dataloader = DataLoader(datapipe, batch_size=512, shuffle=False, num_workers=12)
+
 
 # model (pick one)
 if model_name == "resnet18":
@@ -103,13 +82,7 @@ elif model_name == "vitb14-dinov2":
 labels = torch.empty((0,))
 
 model.to(device)
-for images, labels_batch in train_dataloader:
-    images = images.to(device)
-    with torch.no_grad():
-        output_batch = model(images)
-    output = torch.cat((output, output_batch.cpu()))
-    labels = torch.cat((labels, labels_batch))
-for images, labels_batch in test_dataloader:
+for images, labels_batch in dataloader:
     images = images.to(device)
     with torch.no_grad():
         output_batch = model(images)

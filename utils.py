@@ -1,32 +1,18 @@
-from fnmatch import fnmatch
-from PIL import Image
 import json
+from enum import Enum
+from fnmatch import fnmatch
+
+import albumentations as A
 import numpy as np
 import torch
+from PIL import Image
 from torchdata.datapipes import functional_datapipe
 from torchdata.datapipes.iter import FileOpener, IterDataPipe
-from torchvision.transforms import PILToTensor
-import albumentations as A
 
 
-def expand2square(pil_img, background_color):
-    """
-    To resize the images to 224x224, and convert to RGB
-    """
-    # resize to thumbnail (224, 224)
-    pil_img.thumbnail((224, 224), Image.Resampling.BILINEAR)
-    # create new image of desired size and color
-    width, height = pil_img.size
-    if width == height:
-        return pil_img
-    elif width > height:
-        result = Image.new(pil_img.mode, (width, width), background_color)
-        result.paste(pil_img, (0, (width - height) // 2))
-        return result
-    else:
-        result = Image.new(pil_img.mode, (height, height), background_color)
-        result.paste(pil_img, ((height - width) // 2, 0))
-        return result
+class Padding(Enum):
+    CONSTANT = 1
+    REFLECT = 2
 
 
 @functional_datapipe("set_length")
@@ -43,9 +29,8 @@ class LengthSetterIterDataPipe(IterDataPipe):
         return self.length
 
 
-def get_datapipe(path, num_images, transforms, ignore_mix=True, padding="none"):
-    dataset_path = path
-    fileopener = FileOpener([dataset_path], mode="b")
+def inference_datapipe(path, num_images, transforms, padding, ignore_mix=True):
+    fileopener = FileOpener(path, mode="b")
     datapipe = fileopener.load_from_zip()
 
     def image_filter(data):
@@ -66,26 +51,17 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding="none"):
     def parse_data(data):
         file_name, file_content = data
         id = label2id[file_name.split("/")[-2]]
-        if padding=="constant":
-            img_pil = Image.open(file_content)
-            img_pil = img_pil.convert("RGB")
-            img_pil = expand2square(img_pil, (200, 200, 200))
-            img_tensor = PILToTensor()(img_pil).float()
-        elif padding=="reflect":
-            img_array = np.array(Image.open(file_content).convert("RGB"))
-            img_array = A.PadIfNeeded(img_array.shape[1], img_array.shape[0])(
-                image=img_array
-            )["image"]
-            img_tensor = torch.from_numpy(img_array).float().permute(2, 0, 1)
-        else:
-            img_array = np.array(Image.open(file_content))
-            if img_array.ndim < 3:
-                img_array = np.repeat(img_array[..., np.newaxis], 3, -1)
-
-            img_tensor = torch.from_numpy(img_array).float()
-            img_tensor = img_tensor.permute(2, 0, 1)
-        img_tensor = img_tensor.div(255)
-        img_tensor = transforms(img_tensor)
+        img_array = np.array(Image.open(file_content))
+        if padding == Padding.CONSTANT:
+            img_array = A.PadIfNeeded(
+                img_array.shape[1], img_array.shape[0], border_mode=0, value=200
+            )(image=img_array)["image"]
+        elif padding == Padding.REFLECT:
+            img_array = A.PadIfNeeded(
+                img_array.shape[1], img_array.shape[0], border_mode=4
+            )(image=img_array)["image"]
+        img_array = transforms(image=img_array)["image"]
+        img_tensor = torch.from_numpy(img_array).permute(2, 0, 1)
         return img_tensor, id
 
     datapipe = datapipe.map(parse_data)
@@ -105,7 +81,6 @@ def get_datapipe(path, num_images, transforms, ignore_mix=True, padding="none"):
                 return self.length
 
     datapipe = datapipe.set_length(num_images)
-
     return datapipe
 
 
@@ -157,7 +132,6 @@ def contrastive_datapipe(paths, num_images, transforms, ignore_mix=True):
                 return self.length
 
     datapipe = datapipe.set_length(num_images)
-
     return datapipe
 
 

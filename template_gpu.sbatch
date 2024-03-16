@@ -10,4 +10,5 @@ module load scikit-learn/1.1.2-foss-2022a
 module load matplotlib/3.5.2-foss-2022a
 module load PyTorch-bundle/1.12.1-foss-2022a-CUDA-11.7.0
 source my_python/bin/activate
-python tsne_knn.py -m finetuneSGD_head
+python pretrained_inference.py -p none
+python tsne_knn.py

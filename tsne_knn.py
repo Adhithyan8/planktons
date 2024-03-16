@@ -20,7 +20,6 @@ args = vars(parser.parse_args())
 # load the embeddings
 model_name = args["model"]
 visualize = args["visualize"]
-head = True if "head" in model_name else False
 output = np.load(f"embeddings/output_{model_name}.npy")
 labels = np.load("embeddings/labels.npy")
 
@@ -67,10 +66,7 @@ output_train = output[:NUM_TRAIN]
 output_test = output[NUM_TRAIN:]
 
 # knn
-if head:
-    knn = KNeighborsClassifier(n_neighbors=5, n_jobs=8, metric="minkowski")
-else:
-    knn = KNeighborsClassifier(n_neighbors=5, n_jobs=8, metric="cosine")
+knn = KNeighborsClassifier(n_neighbors=5, n_jobs=8, metric="cosine")
 knn.fit(output_train, labels[:NUM_TRAIN])
 
 # test
@@ -81,9 +77,3 @@ acc = accuracy_score(labels[NUM_TRAIN:], preds)
 print(f"{model_name}")
 print(f"Accuracy: {acc}")
 print(f"F1 score: {f1}")
-
-# class wise F1 score
-for i in range(int(max(labels)) + 1):
-    mask = labels[NUM_TRAIN:] == i
-    f1 = f1_score(labels[NUM_TRAIN:][mask], preds[mask], average="macro")
-    print(f"F1 score for class {i}: {f1}")
