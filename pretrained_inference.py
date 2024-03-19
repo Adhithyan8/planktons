@@ -41,7 +41,7 @@ inference_transform = A.Compose(
     [
         A.ToRGB(),
         A.ToFloat(max_value=255),
-        A.Normalize(),
+        A.Normalize(max_pixel_value=1.0),
         A.Resize(256, 256),
     ]
 )

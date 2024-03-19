@@ -84,7 +84,7 @@ def inference_datapipe(path, num_images, transforms, padding, ignore_mix=True):
     return datapipe
 
 
-def contrastive_datapipe(paths, num_images, transforms, ignore_mix=True):
+def contrastive_datapipe(paths, num_images, transforms, padding, ignore_mix=True):
     fileopener = FileOpener(paths, mode="b")
     datapipe = fileopener.load_from_zip()
 
@@ -106,14 +106,20 @@ def contrastive_datapipe(paths, num_images, transforms, ignore_mix=True):
     def parse_data(data):
         file_name, file_content = data
         id = label2id[file_name.split("/")[-2]]
-        img_array = np.array(Image.open(file_content).convert("RGB"))
-        img_array = A.PadIfNeeded(img_array.shape[1], img_array.shape[0])(
-            image=img_array
-        )["image"]
-        img_tensor = torch.from_numpy(img_array).float().div(255).permute(2, 0, 1)
-        img_tensor_1 = transforms(img_tensor)
-        img_tensor_2 = transforms(img_tensor)
-        return img_tensor_1, img_tensor_2, id
+        img_array = np.array(Image.open(file_content))
+        if padding == Padding.CONSTANT:
+            img_array = A.PadIfNeeded(
+                img_array.shape[1], img_array.shape[0], border_mode=0, value=200
+            )(image=img_array)["image"]
+        elif padding == Padding.REFLECT:
+            img_array = A.PadIfNeeded(
+                img_array.shape[1], img_array.shape[0], border_mode=4
+            )(image=img_array)["image"]
+        img_array1 = transforms(image=img_array)["image"]
+        img_array2 = transforms(image=img_array)["image"]
+        img_tensor1 = torch.from_numpy(img_array1).permute(2, 0, 1)
+        img_tensor2 = torch.from_numpy(img_array2).permute(2, 0, 1)
+        return img_tensor1, img_tensor2, id
 
     datapipe = datapipe.map(parse_data)
     if not hasattr(datapipe, "set_length"):
@@ -163,3 +169,12 @@ class InfoNCECosine(torch.nn.Module):
         neg = (logsumexp_1 + logsumexp_2) / 2
         loss = -(pos - neg)
         return loss
+
+
+def std_of_l2_normalized(z):
+    """
+    From lightly-ai repo
+    https://github.com/lightly-ai/lightly/blob/master/lightly/utils/debug.py
+    """
+    z_norm = torch.nn.functional.normalize(z, dim=1)
+    return torch.std(z_norm, dim=0).mean()
