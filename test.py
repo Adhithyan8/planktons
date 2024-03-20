@@ -23,16 +23,16 @@ contrastive_transform = A.Compose(
             ],
         ),
         # below are always applied
-        A.ToRGB(),
-        A.ToFloat(max_value=255),
+        # A.ToRGB(),
+        # A.ToFloat(max_value=255),
         # A.Normalize(),
-        A.RandomResizedCrop(128, 128, scale=(0.5, 1.0)),
+        A.RandomResizedCrop(128, 128, scale=(0.2, 1.0)),
     ]
 )
 inference_transform = A.Compose(
     [
-        A.ToRGB(),
-        A.ToFloat(max_value=255),
+        # A.ToRGB(),
+        # A.ToFloat(max_value=255),
         # A.Normalize(),
         A.Resize(256, 256),
     ]
@@ -64,28 +64,34 @@ contrastive_loader = DataLoader(
 # visualize the data
 import matplotlib.pyplot as plt
 
-fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-for img, label in dataloader:
-    ax.imshow(img.squeeze().permute(1, 2, 0))
+fig, axs = plt.subplots(1, 1)
+for imgs, _, _, _ in contrastive_loader:
+    axs.imshow(
+        A.Resize(256, 256)(image=imgs.numpy().squeeze())["image"],
+        cmap="gray",
+        vmin=0,
+        vmax=255,
+    )
+    axs.axis("off")
     break
 
-plt.savefig("samples.png")
+# save the plot
+plt.tight_layout()
+plt.savefig("test.png")
 plt.close()
 
-fig, ax = plt.subplots(3, 10, figsize=(24, 8))
-for i, (imgs, imgs_1, imgs_2, labels) in enumerate(contrastive_loader):
-    if i == 10:
-        break
-    ax[0, i].imshow(imgs.squeeze().permute(1, 2, 0))
-    ax[0, i].set_title(labels.item())
-    ax[0, i].axis("off")
-    ax[1, i].imshow(imgs_1.squeeze().permute(1, 2, 0))
-    ax[1, i].set_title(f"{labels.item()} - 1")
-    ax[1, i].axis("off")
-    ax[2, i].imshow(imgs_2.squeeze().permute(1, 2, 0))
-    ax[2, i].set_title(f"{labels.item()} - 2")
-    ax[2, i].axis("off")
+fig, axs = plt.subplots(2, 3)
+for i in range(2):
+    for j in range(3):
+        axs[i, j].imshow(
+            contrastive_transform(image=imgs.numpy().squeeze())["image"],
+            cmap="gray",
+            vmin=0,
+            vmax=255,
+        )
+        axs[i, j].axis("off")
 
 # save the plot
-plt.savefig("test.png")
+plt.tight_layout()
+plt.savefig("augs.png")
 plt.close()
