@@ -178,3 +178,71 @@ def std_of_l2_normalized(z):
     """
     z_norm = torch.nn.functional.normalize(z, dim=1)
     return torch.std(z_norm, dim=0).mean()
+
+
+
+class SearchDataset(torch.utils.data.Dataset):
+
+    def __init__(self, path, num_images, padding, ignore_mix=True, transform=None):
+        self.transform = transform
+        self.path = path
+        self.num_images = num_images
+        self.padding = padding
+        self.ignore_mix = ignore_mix
+        self.transform = transform
+        self.label2id = self.load_label_dict()
+        self.datapipe = self.process_datapipe()
+
+    def load_label_dict(self):
+        with open("/cephyr/users/adhkal/Alvis/planktons/labels.json") as f:
+            return json.load(f)
+
+    def process_datapipe(self):
+        datapipe = FileOpener(self.path, mode="b").load_from_zip()
+
+        def image_filter(data):
+            file_name, _ = data
+            if self.ignore_mix:
+                return fnmatch(file_name, "*.png") and file_name.split("/")[-2] != "mix"
+            else:
+                return fnmatch(file_name, "*.png")
+
+        datapipe = datapipe.filter(image_filter)
+        datapipe = datapipe.shuffle()
+        datapipe = datapipe.sharding_filter()
+        return datapipe
+
+    def parse_data(self, data):
+        file_name, file_content = data
+        label = self.label2id[file_name.split("/")[-2]]
+        img_array = np.array(Image.open(file_content))
+        if self.padding == Padding.CONSTANT:
+            img_array = A.PadIfNeeded(
+                img_array.shape[1], img_array.shape[0], border_mode=0, value=200
+            )(image=img_array)["image"]
+        elif self.padding == Padding.REFLECT:
+            img_array = A.PadIfNeeded(
+                img_array.shape[1], img_array.shape[0], border_mode=4
+            )(image=img_array)["image"]
+        return img_array, label
+
+    def __len__(self):
+        return self.num_images
+
+    def __getitem__(self, index):
+        # Implement logic to get an image and its label using the received index.
+        #
+        # `image` should be a NumPy array with the shape [height, width, num_channels].
+        # If an image contains three color channels, it should use an RGB color scheme.
+        #
+        # `label` should be an integer in the range [0, model.num_classes - 1] where `model.num_classes`
+        # is a value set in the `search.yaml` file.
+
+        data = next(iter(self.datapipe))
+        image, label = self.parse_data(data)
+
+        if self.transform is not None:
+            transformed = self.transform(image=image)
+            image = transformed["image"]
+
+        return image, label
