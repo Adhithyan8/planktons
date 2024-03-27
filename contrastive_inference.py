@@ -46,9 +46,16 @@ inference_transform = A.Compose(
     ]
 )
 
-datapipe = inference_datapipe(
+datapipe_train = inference_datapipe(
     [
         "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
+    ],
+    num_images=NUM_TOTAL,
+    transforms=inference_transform,
+    padding=padding,
+)
+datapipe_test = inference_datapipe(
+    [
         "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
     ],
     num_images=NUM_TOTAL,
@@ -56,7 +63,12 @@ datapipe = inference_datapipe(
     padding=padding,
 )
 
-dataloader = DataLoader(datapipe, batch_size=512, shuffle=False, num_workers=8)
+dataloader_train = DataLoader(
+    datapipe_train, batch_size=512, shuffle=False, num_workers=8
+)
+dataloader_test = DataLoader(
+    datapipe_test, batch_size=512, shuffle=False, num_workers=8
+)
 
 # load model
 backbone = torch.hub.load("pytorch/vision:v0.9.0", "resnet18", pretrained=True)
@@ -68,8 +80,8 @@ projection_head = torch.nn.Sequential(
 )
 
 # load state dict
-backbone.load_state_dict(torch.load(f"{config}_resnet18_backbone.pth"))
-projection_head.load_state_dict(torch.load(f"{config}_resnet18_head.pth"))
+backbone.load_state_dict(torch.load(f"model_weights/{config}_resnet18_backbone.pth"))
+projection_head.load_state_dict(torch.load(f"model_weights/{config}_resnet18_head.pth"))
 
 if head:
     model = torch.nn.Sequential(backbone, projection_head)
@@ -85,7 +97,13 @@ else:
 labels = torch.empty((0,))
 
 model.to(device)
-for images, labels_batch in dataloader:
+for images, labels_batch in dataloader_train:
+    images = images.to(device)
+    with torch.no_grad():
+        output_batch = model(images)
+    output = torch.cat((output, output_batch.cpu()))
+    labels = torch.cat((labels, labels_batch))
+for images, labels_batch in dataloader_test:
     images = images.to(device)
     with torch.no_grad():
         output_batch = model(images)
@@ -98,4 +116,4 @@ labels = labels.numpy()
 
 # save
 np.save(f"embeddings/output_{config}_resnet18{'_head' if head else ''}.npy", output)
-np.save(f"embeddings/labels.npy", labels)
+np.save(f"embeddings/labels_{config}_resnet18{'_head' if head else ''}.npy", labels)

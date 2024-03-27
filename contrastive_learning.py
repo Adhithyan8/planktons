@@ -1,8 +1,16 @@
 import albumentations as A
 import torch
 from torch.utils.data import DataLoader
+from torchvision.transforms import (
+    AugMix,
+    AutoAugment,
+    Compose,
+    RandAugment,
+    Resize,
+    TrivialAugmentWide,
+)
 
-from utils import InfoNCECosine, Padding, contrastive_datapipe, std_of_l2_normalized
+from utils import InfoNCECosine, Padding, contrastive_datapipe
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -123,10 +131,8 @@ for epoch in range(n_epochs):
         scheduler.step()
 
         if i % 100 == 0:
-            print(
-                f"Epoch [{epoch+1}/{n_epochs}], Loss: {loss.item():.4f}"
-            )
+            print(f"Epoch [{epoch+1}/{n_epochs}], Loss: {loss.item():.4f}")
 
 # save the model
-torch.save(model[0].state_dict(), f"finetune_{model_name}_backbone.pth")
-torch.save(model[1].state_dict(), f"finetune_{model_name}_head.pth")
+torch.save(model[0].state_dict(), f"ft250_{model_name}_backbone.pth")
+torch.save(model[1].state_dict(), f"ft250_{model_name}_head.pth")

@@ -10,4 +10,5 @@ module purge
 module load matplotlib/3.5.2-foss-2022a
 module load scikit-learn/1.1.2-foss-2022a
 source my_python/bin/activate
-python tsne_knn.py -m finetuneAdamW
+python pretrained_inference.py -p constant
+python tsne_knn.py -m resnet18

@@ -21,7 +21,7 @@ args = vars(parser.parse_args())
 model_name = args["model"]
 visualize = args["visualize"]
 output = np.load(f"embeddings/output_{model_name}.npy")
-labels = np.load("embeddings/labels.npy")
+labels = np.load(f"embeddings/labels_{model_name}.npy")
 
 """
 2013: 421238
@@ -48,19 +48,17 @@ if visualize:
         initialization=init,
     )
 
-    # plot the embedding (only train set)
-    embed_train = embedding[:NUM_TRAIN]
+    # plot the embedding
     plt.figure(figsize=(10, 10))
     plt.scatter(
-        embed_train[:, 0],
-        embed_train[:, 1],
-        c=labels[:NUM_TRAIN],
-        cmap="Spectral",
-        s=0.1,
+        embedding[:, 0], embedding[:, 1], c=labels, cmap="Spectral", s=0.1, alpha=0.8
     )
     plt.axis("off")
-    plt.savefig(f"figures/tsne_train_{model_name}.png", dpi=300)
+    plt.savefig(f"figures/tsne_{model_name}.png", dpi=600)
     plt.close()
+
+    # save embedding
+    np.save(f"embeddings/embeds_{model_name}.npy", embedding)
 
 output_train = output[:NUM_TRAIN]
 output_test = output[NUM_TRAIN:]
@@ -71,9 +69,14 @@ knn.fit(output_train, labels[:NUM_TRAIN])
 
 # test
 preds = knn.predict(output_test)
-f1 = f1_score(labels[NUM_TRAIN:], preds, average="macro")
+f1 = f1_score(labels[NUM_TRAIN:], preds, labels=list(range(103)), average="macro")
 acc = accuracy_score(labels[NUM_TRAIN:], preds)
 
 print(f"{model_name}")
 print(f"Accuracy: {acc}")
 print(f"F1 score: {f1}")
+
+# class wise macro f1 - labels range from 0 to 102
+f1 = f1_score(labels[NUM_TRAIN:], preds, labels=list(range(103)), average=None)
+for i in range(103):
+    print(f"Class {i}: {f1[i]}")
