@@ -10,5 +10,4 @@ module load PyTorch-bundle/1.12.1-foss-2022a-CUDA-11.7.0
 module load scikit-learn/1.1.2-foss-2022a
 module load matplotlib/3.5.2-foss-2022a
 source my_python/bin/activate
-python contrastive_inference.py -c ft500 --head
-python tsne_knn.py -m ft500_resnet18_head
+python error_analysis.py

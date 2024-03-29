@@ -1,7 +1,6 @@
 .vscode/
 __pycache__/
 planktons_dataset/
-autoalbument-search-planktons/
 embeddings/
 *.err
 *.out
