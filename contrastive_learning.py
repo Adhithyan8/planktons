@@ -1,16 +1,8 @@
 import albumentations as A
 import torch
 from torch.utils.data import DataLoader
-from torchvision.transforms import (
-    AugMix,
-    AutoAugment,
-    Compose,
-    RandAugment,
-    Resize,
-    TrivialAugmentWide,
-)
 
-from utils import InfoNCECosine, Padding, contrastive_datapipe
+from utils import InfoNCECosine, SemiSupervisedContrastive, SupervisedContrastive, Padding, contrastive_datapipe
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -59,6 +51,8 @@ datapipe = contrastive_datapipe(
     num_images=NUM_TOTAL,
     transforms=contrastive_transform,
     padding=pad,
+    ignore_mix=True,
+    mask_label=True, # for semi-supervised learning
 )
 
 # create a dataloader
@@ -112,27 +106,34 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
 )
 
 # loss
-criterion = InfoNCECosine(temperature=0.5)
+criterion1 = InfoNCECosine(temperature=0.5)
+criterion2 = SupervisedContrastive(temperature=0.5)
+criterion = SemiSupervisedContrastive(temperature=0.5)
+lamda = 0.5
 
 print(f"Model: {model_name}")
-print(f"Padding: {pad}")
 
 # train the model
 model.train().to(device)
 for epoch in range(n_epochs):
-    for i, (img1, img2, _) in enumerate(dataloader):
-        img1, img2 = img1.to(device), img2.to(device)
+    for i, (img1, img2, id) in enumerate(dataloader):
+        img1, img2, id = img1.to(device), img2.to(device), id.to(device)
         optimizer.zero_grad()
         img = torch.cat((img1, img2), dim=0)
+        id = torch.cat((id, id), dim=0)
         output = model(img)
-        loss = criterion(output)
+        # unsupervised_loss = criterion1(output)
+        # supervised_loss = criterion2(output, id)
+        # loss = (1 - lamda) * unsupervised_loss + lamda * supervised_loss
+        loss = criterion(output, id)
         loss.backward()
         optimizer.step()
         scheduler.step()
 
         if i % 100 == 0:
+            # print(f"Epoch [{epoch+1}/{n_epochs}], Unsup_loss: {unsupervised_loss.item():.4f}, Sup_loss: {supervised_loss.item():.4f}, Loss: {loss.item():.4f}")
             print(f"Epoch [{epoch+1}/{n_epochs}], Loss: {loss.item():.4f}")
 
 # save the model
-torch.save(model[0].state_dict(), f"ft250_{model_name}_backbone.pth")
-torch.save(model[1].state_dict(), f"ft250_{model_name}_head.pth")
+torch.save(model[0].state_dict(), f"semisp_{model_name}_backbone.pth")
+torch.save(model[1].state_dict(), f"semisp_{model_name}_head.pth")

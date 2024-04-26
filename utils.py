@@ -85,7 +85,9 @@ def inference_datapipe(path, num_images, transforms, padding, ignore_mix=True):
     return datapipe
 
 
-def contrastive_datapipe(paths, num_images, transforms, padding, ignore_mix=True):
+def contrastive_datapipe(
+    paths, num_images, transforms, padding, ignore_mix=True, mask_label=False
+):
     fileopener = FileOpener(paths, mode="b")
     datapipe = fileopener.load_from_zip()
 
@@ -103,10 +105,21 @@ def contrastive_datapipe(paths, num_images, transforms, padding, ignore_mix=True
     # get label dictionary
     with open("labels.json") as f:
         label2id = json.load(f)
+    with open("labelled_classes.json") as f:
+        labelled_classes = json.load(f)
 
     def parse_data(data):
         file_name, file_content = data
-        id = label2id[file_name.split("/")[-2]]
+        if not mask_label:
+            id = label2id[file_name.split("/")[-2]]
+        else:
+            if (
+                label2id[file_name.split("/")[-2]] in labelled_classes
+                and file_name.split("/")[-3] == "2013"
+            ):
+                id = label2id[file_name.split("/")[-2]]
+            else:
+                id = -1
         if isinstance(transforms, A.core.composition.Compose):
             img_array = np.array(Image.open(file_content))
         else:
@@ -193,3 +206,205 @@ def std_of_l2_normalized(z):
     """
     z_norm = torch.nn.functional.normalize(z, dim=1)
     return torch.std(z_norm, dim=0).mean()
+
+
+class SupervisedContrastive(torch.nn.Module):
+    def __init__(self, temperature=0.07):
+        super(SupervisedContrastive, self).__init__()
+        self.temperature = temperature
+
+    def forward(self, features, labels):
+        # find and drop unlabelled samples
+        mask = labels != -1
+        features = features[mask]
+        labels = labels[mask]
+
+        # square mask that matches labels
+        mask = labels.unsqueeze(0) == labels.unsqueeze(1)
+        mask.to(features.device)
+        # ignore self similarity
+        diag = torch.eye(features.shape[0], device=features.device).bool()
+        mask = mask.masked_fill_(diag, bool(0))
+
+        # get the cosine similarity matrix
+        features = torch.nn.functional.normalize(features, dim=1)
+        cos = features @ features.T / self.temperature
+
+        # where the mask is true
+        pos_sum = ((mask.float() * cos).sum(dim=1)) / (mask.sum(dim=1).float())
+        pos = pos_sum.mean()
+
+        # logsumexp over all but the diagonal
+        logsumexp = cos.masked_fill_(diag, float("-inf")).logsumexp(dim=1)
+        neg = logsumexp.mean()
+
+        loss = -(pos - neg)
+        return loss
+
+
+class SemiSupervisedContrastive(torch.nn.Module):
+    def __init__(self, temperature=0.07):
+        super(SemiSupervisedContrastive, self).__init__()
+        self.temperature = temperature
+
+    def forward(self, features, labels):
+        # find the unlabelled samples
+        mask = labels == -1
+        features_u = features[mask]
+        labels_u = labels[mask]  # not used
+        size_u = features_u.shape[0] // 2
+
+        # find and drop unlabelled samples
+        mask = labels != -1
+        features_l = features[mask]
+        labels_l = labels[mask]
+
+        # mask matching positive pairs
+        m11 = (
+            torch.cat(
+                (
+                    torch.cat((torch.zeros(size_u, size_u), torch.eye(size_u)), dim=1),
+                    torch.cat((torch.eye(size_u), torch.zeros(size_u, size_u)), dim=1),
+                ),
+                dim=0,
+            )
+            .bool()
+            .to(features.device)
+        )
+        m22 = labels_l.unsqueeze(0) == labels_l.unsqueeze(1)
+        # set diagonal to false
+        m22 = m22.masked_fill_(
+            torch.eye(m22.shape[0], device=features.device).bool(), bool(0)
+        )
+        m22.to(features.device)
+        m12 = torch.zeros(
+            features_u.shape[0], features_l.shape[0], device=features.device
+        ).bool()
+        m21 = torch.zeros(
+            features_l.shape[0], features_u.shape[0], device=features.device
+        ).bool()
+        mask = torch.cat(
+            (torch.cat((m11, m12), dim=1), torch.cat((m21, m22), dim=1)), dim=0
+        )
+
+        features = torch.cat((features_u, features_l), dim=0)
+        # get the cosine similarity matrix
+        features = torch.nn.functional.normalize(features, dim=1)
+        cos = features @ features.T / self.temperature
+
+        # where the mask is true
+        pos_sum = ((mask.float() * cos).sum(dim=1)) / (mask.sum(dim=1).float())
+        pos = pos_sum.mean()
+
+        # logsumexp over all but the diagonal
+        logsumexp = cos.masked_fill_(
+            torch.eye(cos.shape[0], device=features.device).bool(), float("-inf")
+        ).logsumexp(dim=1)
+        neg = logsumexp.mean()
+
+        loss = -(pos - neg)
+        return loss
+
+
+class InfoCNECauchy(torch.nn.Module):
+    def __init__(self, temperature=0.07, mode="selfsupervised"):
+        super(InfoCNECauchy, self).__init__()
+        self.temperature = temperature
+        self.mode = mode
+
+    def forward(self, features, labels):
+        if self.mode == "selfsupervised":
+            batch_size = features.shape[0] // 2
+            mask = torch.cat(
+                (
+                    torch.cat(
+                        (torch.zeros(batch_size, batch_size), torch.eye(batch_size)),
+                        dim=1,
+                    ),
+                    torch.cat(
+                        (torch.eye(batch_size), torch.zeros(batch_size, batch_size)),
+                        dim=1,
+                    ),
+                ),
+                dim=0,
+                device=features.device,
+            ).bool()
+
+        elif self.mode == "supervised":
+            # find and drop unlabelled samples
+            mask = labels != -1
+            features = features[mask]
+            labels = labels[mask]
+
+            # square mask that matches labels
+            mask = labels.unsqueeze(0) == labels.unsqueeze(1)
+            mask.to(features.device)
+            # ignore self similarity
+            mask = mask.masked_fill_(
+                torch.eye(features.shape[0], device=features.device).bool(), bool(0)
+            )
+
+        elif self.mode == "semisupervised":
+            # find the unlabelled samples
+            mask = labels == -1
+            features_u = features[mask]
+            labels_u = labels[mask]
+            size_u = features_u.shape[0] // 2
+
+            # find and drop unlabelled samples
+            mask = labels != -1
+            features_l = features[mask]
+            labels_l = labels[mask]
+
+            # mask matching positive pairs
+            m11 = (
+                torch.cat(
+                    (
+                        torch.cat(
+                            (torch.zeros(size_u, size_u), torch.eye(size_u)), dim=1
+                        ),
+                        torch.cat(
+                            (torch.eye(size_u), torch.zeros(size_u, size_u)), dim=1
+                        ),
+                    ),
+                    dim=0,
+                )
+                .bool()
+                .to(features.device)
+            )
+            m22 = labels_l.unsqueeze(0) == labels_l.unsqueeze(1)
+            m22.to(features.device)
+            # set diagonal to false
+            m22 = m22.masked_fill_(
+                torch.eye(m22.shape[0], device=features.device).bool(), bool(0)
+            )
+            m12 = torch.zeros(
+                features_u.shape[0], features_l.shape[0], device=features.device
+            ).bool()
+            m21 = torch.zeros(
+                features_l.shape[0], features_u.shape[0], device=features.device
+            ).bool()
+            mask = torch.cat(
+                (torch.cat((m11, m12), dim=1), torch.cat((m21, m22), dim=1)), dim=0
+            )
+
+            features = torch.cat((features_u, features_l), dim=0)
+
+        # cauchy similarity
+        sim = 1 / (
+            torch.cdist(features, features, p=2) / self.temperature
+        ).square().add(1)
+
+        # where the mask is true - log(sim[mask])
+        pos = (torch.log(sim[mask]).sum(dim=1)) / (mask.sum(dim=1).float())
+        pos = pos.mean()
+
+        # log sum over all but the diagonal
+        sim = sim.masked_fill_(
+            torch.eye(sim.shape[0], device=features.device).bool(), 0.0
+        )
+        neg = sim.sum(dim=1).log_().mean()
+
+        loss = -(pos - neg)
+
+        return loss
