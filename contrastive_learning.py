@@ -2,7 +2,7 @@ import albumentations as A
 import torch
 from torch.utils.data import DataLoader
 
-from utils import InfoNCECosine, SemiSupervisedContrastive, SupervisedContrastive, Padding, contrastive_datapipe
+from utils import InfoNCECosine, SemiSupervisedContrastive, SupervisedContrastive, InfoCNECauchy, Padding, contrastive_datapipe
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -92,9 +92,10 @@ model = torch.nn.Sequential(backbone, projection_head)
 
 # optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.1, weight_decay=5e-4)
+# optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
 
 # lr scheduler with linear warmup and cosine decay
-lr = 0.03 * (batch_size / 256)
+lr = 0.03 * (batch_size / 256) * 0.1
 scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=lr,
@@ -108,7 +109,7 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
 # loss
 criterion1 = InfoNCECosine(temperature=0.5)
 criterion2 = SupervisedContrastive(temperature=0.5)
-criterion = SemiSupervisedContrastive(temperature=0.5)
+criterion = InfoCNECauchy(temperature=1.0, mode="selfsupervised")
 lamda = 0.5
 
 print(f"Model: {model_name}")
@@ -127,6 +128,7 @@ for epoch in range(n_epochs):
         # loss = (1 - lamda) * unsupervised_loss + lamda * supervised_loss
         loss = criterion(output, id)
         loss.backward()
+        torch.nn.utils.clip_grad_value_(model.parameters(), 1.0)
         optimizer.step()
         scheduler.step()
 
@@ -135,5 +137,5 @@ for epoch in range(n_epochs):
             print(f"Epoch [{epoch+1}/{n_epochs}], Loss: {loss.item():.4f}")
 
 # save the model
-torch.save(model[0].state_dict(), f"semisp_{model_name}_backbone.pth")
-torch.save(model[1].state_dict(), f"semisp_{model_name}_head.pth")
+torch.save(model[0].state_dict(), f"selfcy_{model_name}_backbone.pth")
+torch.save(model[1].state_dict(), f"selfcy_{model_name}_head.pth")

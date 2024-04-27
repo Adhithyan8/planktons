@@ -314,21 +314,14 @@ class InfoCNECauchy(torch.nn.Module):
 
     def forward(self, features, labels):
         if self.mode == "selfsupervised":
-            batch_size = features.shape[0] // 2
+            size = features.shape[0] // 2
             mask = torch.cat(
-                (
-                    torch.cat(
-                        (torch.zeros(batch_size, batch_size), torch.eye(batch_size)),
-                        dim=1,
+                    (
+                        torch.cat((torch.zeros(size, size), torch.eye(size)), dim=1),
+                        torch.cat((torch.eye(size), torch.zeros(size, size)), dim=1),
                     ),
-                    torch.cat(
-                        (torch.eye(batch_size), torch.zeros(batch_size, batch_size)),
-                        dim=1,
-                    ),
-                ),
-                dim=0,
-                device=features.device,
-            ).bool()
+                    dim=0,
+                ).bool().to(features.device)
 
         elif self.mode == "supervised":
             # find and drop unlabelled samples
@@ -396,15 +389,11 @@ class InfoCNECauchy(torch.nn.Module):
         ).square().add(1)
 
         # where the mask is true - log(sim[mask])
-        pos = (torch.log(sim[mask]).sum(dim=1)) / (mask.sum(dim=1).float())
+        pos = (mask.float() * torch.log(sim)).sum(dim=1) / (mask.sum(dim=1).float())
         pos = pos.mean()
 
         # log sum over all but the diagonal
-        sim = sim.masked_fill_(
-            torch.eye(sim.shape[0], device=features.device).bool(), 0.0
-        )
-        neg = sim.sum(dim=1).log_().mean()
+        neg = (sim - torch.eye(sim.shape[0], device=features.device)).sum(dim=1).log_().mean()
 
         loss = -(pos - neg)
-
         return loss
