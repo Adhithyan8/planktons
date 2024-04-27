@@ -2,7 +2,9 @@ import albumentations as A
 import torch
 from torch.utils.data import DataLoader
 
-from utils import InfoNCECosine, SemiSupervisedContrastive, SupervisedContrastive, InfoCNECauchy, Padding, contrastive_datapipe
+from utils import (InfoCNECauchy, InfoNCECosine, Padding,
+                   SemiSupervisedContrastive, SupervisedContrastive,
+                   contrastive_datapipe)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

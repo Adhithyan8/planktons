@@ -8,7 +8,6 @@ import torch
 from PIL import Image
 from torchdata.datapipes import functional_datapipe
 from torchdata.datapipes.iter import FileOpener, IterDataPipe
-from torchvision.transforms import Normalize
 
 
 class Padding(Enum):
@@ -16,18 +15,18 @@ class Padding(Enum):
     REFLECT = 2
 
 
-@functional_datapipe("set_length")
-class LengthSetterIterDataPipe(IterDataPipe):
-    def __init__(self, source_datapipe: IterDataPipe, length: int) -> None:
-        self.source_datapipe = source_datapipe
-        assert length >= 0
-        self.length = length
+# @functional_datapipe("set_length")
+# class LengthSetterIterDataPipe(IterDataPipe):
+#     def __init__(self, source_datapipe: IterDataPipe, length: int) -> None:
+#         self.source_datapipe = source_datapipe
+#         assert length >= 0
+#         self.length = length
 
-    def __iter__(self) -> IterDataPipe:  # type: ignore
-        yield from self.source_datapipe
+#     def __iter__(self) -> IterDataPipe:  # type: ignore
+#         yield from self.source_datapipe
 
-    def __len__(self) -> int:
-        return self.length
+#     def __len__(self) -> int:
+#         return self.length
 
 
 def inference_datapipe(path, num_images, transforms, padding, ignore_mix=True):
@@ -120,10 +119,7 @@ def contrastive_datapipe(
                 id = label2id[file_name.split("/")[-2]]
             else:
                 id = -1
-        if isinstance(transforms, A.core.composition.Compose):
-            img_array = np.array(Image.open(file_content))
-        else:
-            img_array = np.array(Image.open(file_content).convert("RGB"))
+        img_array = np.array(Image.open(file_content))
         if padding == Padding.CONSTANT:
             img_array = A.PadIfNeeded(
                 img_array.shape[1], img_array.shape[0], border_mode=0, value=200
@@ -132,21 +128,11 @@ def contrastive_datapipe(
             img_array = A.PadIfNeeded(
                 img_array.shape[1], img_array.shape[0], border_mode=4
             )(image=img_array)["image"]
-        if isinstance(transforms, A.core.composition.Compose):
-            img_array1 = transforms(image=img_array)["image"]
-            img_array2 = transforms(image=img_array)["image"]
-            img_tensor1 = torch.from_numpy(img_array1).permute(2, 0, 1)
-            img_tensor2 = torch.from_numpy(img_array2).permute(2, 0, 1)
-        else:
-            img_tensor = torch.from_numpy(img_array).permute(2, 0, 1)
-            img_tensor1 = transforms(img_tensor).div(255)
-            img_tensor2 = transforms(img_tensor).div(255)
-            img_tensor1 = Normalize(
-                mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
-            )(img_tensor1)
-            img_tensor2 = Normalize(
-                mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
-            )(img_tensor2)
+
+        img_array1 = transforms(image=img_array)["image"]
+        img_array2 = transforms(image=img_array)["image"]
+        img_tensor1 = torch.from_numpy(img_array1).permute(2, 0, 1)
+        img_tensor2 = torch.from_numpy(img_array2).permute(2, 0, 1)
         return img_tensor1, img_tensor2, id
 
     datapipe = datapipe.map(parse_data)
