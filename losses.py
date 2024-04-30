@@ -1,5 +1,7 @@
 import torch
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class InfoNCECosineSelfSupervised(torch.nn.Module):
     def __init__(self, temperature=0.5):
@@ -17,12 +19,12 @@ class InfoNCECosineSelfSupervised(torch.nn.Module):
         pos = torch.trace(z12) / b
 
         n1 = (
-            torch.hstack((z11.masked_fill_(torch.eye(b).bool(), float("-inf")), z12))
+            torch.hstack((z11.masked_fill_(torch.eye(b, device=device).bool(), float("-inf")), z12))
             .logsumexp(dim=1)
             .mean()
         )
         n2 = (
-            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b).bool(), float("-inf"))))
+            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b, device=device).bool().to(device), float("-inf"))))
             .logsumexp(dim=1)
             .mean()
         )
@@ -48,7 +50,7 @@ class InfoNCECosineSupervised(torch.nn.Module):
         l = labels[labels != -1][:b]
         mij = l.unsqueeze(0) == l.unsqueeze(1)
         mii = (l.unsqueeze(0) == l.unsqueeze(1)).masked_fill_(
-            torch.eye(b).bool(), bool(0)
+            torch.eye(b, device=device).bool(), bool(0)
         )
 
         p1 = (
@@ -62,12 +64,12 @@ class InfoNCECosineSupervised(torch.nn.Module):
         pos = torch.cat((p1, p2)).mean()
 
         n1 = (
-            torch.hstack((z11.masked_fill_(torch.eye(b).bool(), float("-inf")), z12))
+            torch.hstack((z11.masked_fill_(torch.eye(b, device=device).bool(), float("-inf")), z12))
             .logsumexp(dim=1)
             .mean()
         )
         n2 = (
-            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b).bool(), float("-inf"))))
+            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b, device=device).bool(), float("-inf"))))
             .logsumexp(dim=1)
             .mean()
         )
@@ -102,7 +104,7 @@ class InfoNCECosineSemiSupervised(torch.nn.Module):
         z_l12 = z_l1 @ z_l2.T / self.temperature
         m_ij = l_l.unsqueeze(0) == l_l.unsqueeze(1)
         m_ii = (l_l.unsqueeze(0) == l_l.unsqueeze(1)).masked_fill_(
-            torch.eye(l_l.shape[0]).bool(), bool(0)
+            torch.eye(l_l.shape[0], device=device).bool(), bool(0)
         )
         p2 = torch.hstack((z_l11 * m_ii.float(), z_l12 * m_ij.float())).sum(
             dim=1
@@ -118,7 +120,7 @@ class InfoNCECosineSemiSupervised(torch.nn.Module):
         z_u2l2 = z_u2 @ z_l2.T / self.temperature
         n1 = torch.hstack(
             (
-                z_u11.masked_fill_(torch.eye(b_u).bool(), float("-inf")),
+                z_u11.masked_fill_(torch.eye(b_u, device=device).bool(), float("-inf")),
                 z_u12,
                 z_u1l1,
                 z_u1l2,
@@ -127,7 +129,7 @@ class InfoNCECosineSemiSupervised(torch.nn.Module):
         n2 = torch.hstack(
             (
                 z_u12.T,
-                z_u22.masked_fill_(torch.eye(b_u).bool(), float("-inf")),
+                z_u22.masked_fill_(torch.eye(b_u, device=device).bool(), float("-inf")),
                 z_u2l1,
                 z_u2l2,
             )
@@ -136,7 +138,7 @@ class InfoNCECosineSemiSupervised(torch.nn.Module):
             (
                 z_u1l1.T,
                 z_u2l1.T,
-                z_l11.masked_fill_(torch.eye(b_l).bool(), float("-inf")),
+                z_l11.masked_fill_(torch.eye(b_l, device=device).bool(), float("-inf")),
                 z_l12,
             )
         ).logsumexp(dim=1)
@@ -145,7 +147,7 @@ class InfoNCECosineSemiSupervised(torch.nn.Module):
                 z_u1l2.T,
                 z_u2l2.T,
                 z_l12.T,
-                z_l22.masked_fill_(torch.eye(b_l).bool(), float("-inf")),
+                z_l22.masked_fill_(torch.eye(b_l, device=device).bool(), float("-inf")),
             )
         ).logsumexp(dim=1)
         neg = torch.cat((n1, n2, n3, n4)).mean()
@@ -179,13 +181,13 @@ class InfoNCECauchySelfSupervised(torch.nn.Module):
         pos = torch.trace(z12.log()) / b
 
         n1 = (
-            torch.hstack((z11.masked_fill_(torch.eye(b).bool(), 0.0), z12))
+            torch.hstack((z11.masked_fill_(torch.eye(b, device=device).bool(), 0.0), z12))
             .sum(dim=1)
             .log()
             .mean()
         )
         n2 = (
-            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b).bool(), 0.0)))
+            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b, device=device).bool(), 0.0)))
             .sum(dim=1)
             .log()
             .mean()
@@ -221,7 +223,7 @@ class InfoNCECauchySupervised(torch.nn.Module):
         l = labels[labels != -1][:b]
         mij = l.unsqueeze(0) == l.unsqueeze(1)
         mii = (l.unsqueeze(0) == l.unsqueeze(1)).masked_fill_(
-            torch.eye(b).bool(), bool(0)
+            torch.eye(b, device=device).bool(), bool(0)
         )
 
         p1 = (
@@ -235,13 +237,13 @@ class InfoNCECauchySupervised(torch.nn.Module):
         pos = torch.cat((p1, p2)).mean()
 
         n1 = (
-            torch.hstack((z11.masked_fill_(torch.eye(b).bool(), 0.0), z12))
+            torch.hstack((z11.masked_fill_(torch.eye(b, device=device).bool(), 0.0), z12))
             .sum(dim=1)
             .log()
             .mean()
         )
         n2 = (
-            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b).bool(), 0.0)))
+            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b, device=device).bool(), 0.0)))
             .sum(dim=1)
             .log()
             .mean()
@@ -301,7 +303,7 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
         )
         m_ij = l_l.unsqueeze(0) == l_l.unsqueeze(1)
         m_ii = (l_l.unsqueeze(0) == l_l.unsqueeze(1)).masked_fill_(
-            torch.eye(l_l.shape[0]).bool(), bool(0)
+            torch.eye(l_l.shape[0], device=device).bool(), bool(0)
         )
         p2 = (
             torch.hstack((z_l11.log() * m_ii.float(), z_l12.log() * m_ij.float())).sum(
@@ -340,7 +342,7 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
         n1 = (
             torch.hstack(
                 (
-                    z_u11.masked_fill_(torch.eye(b_u).bool(), 0.0),
+                    z_u11.masked_fill_(torch.eye(b_u, device=device).bool(), 0.0),
                     z_u12,
                     z_u1l1,
                     z_u1l2,
@@ -353,7 +355,7 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
             torch.hstack(
                 (
                     z_u12.T,
-                    z_u22.masked_fill_(torch.eye(b_u).bool(), 0.0),
+                    z_u22.masked_fill_(torch.eye(b_u, device=device).bool(), 0.0),
                     z_u2l1,
                     z_u2l2,
                 )
@@ -366,7 +368,7 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
                 (
                     z_u1l1.T,
                     z_u2l1.T,
-                    z_l11.masked_fill_(torch.eye(b_l).bool(), 0.0),
+                    z_l11.masked_fill_(torch.eye(b_l, device=device).bool(), 0.0),
                     z_l12,
                 )
             )
@@ -379,7 +381,7 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
                     z_u1l2.T,
                     z_u2l2.T,
                     z_l12.T,
-                    z_l22.masked_fill_(torch.eye(b_l).bool(), 0.0),
+                    z_l22.masked_fill_(torch.eye(b_l, device=device).bool(), 0.0),
                 )
             )
             .sum(dim=1)

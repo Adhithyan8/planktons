@@ -16,9 +16,9 @@ parser.add_argument("--head-dim", type=int, default=128)
 
 args = vars(parser.parse_args())
 name = args["name"]
-if args["pad"] == "constant":
+if args["padding"] == "constant":
     padding = Padding.CONSTANT
-elif args["pad"] == "reflect":
+elif args["padding"] == "reflect":
     padding = Padding.REFLECT
 else:
     padding = None
