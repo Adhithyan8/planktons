@@ -10,4 +10,4 @@ module purge
 module load scikit-learn/1.1.2-foss-2022a
 module load matplotlib/3.5.2-foss-2022a
 source my_python/bin/activate
-python tsne_knn.py -m selfcauchy_resnet18 -v
+python kmeans.py --name selfcauchy_resnet18_head --visualize --metric cosine --normalize
