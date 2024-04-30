@@ -10,21 +10,23 @@ from scipy.optimize import linear_sum_assignment
 
 matplotlib.use("Agg")
 
-# parser
+# parse arguments
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument("-m", "--model", default="resnet18", help="Model architecture")
-parser.add_argument(
-    "-v", "--visualize", action="store_true", help="Visualize 2D embedding with tSNE"
-)
+parser.add_argument("--name", default="resnet18")
+parser.add_argument("--visualize", action="store_true", help="tSNE")
+parser.add_argument("--normalize", action="store_true", help="normalize embeddings")
+parser.add_argument("--metric", default="cosine")
 args = vars(parser.parse_args())
 
-# load the embeddings
-model_name = args["model"]
+name = args["name"]
 visualize = args["visualize"]
-output = np.load(f"embeddings/output_{model_name}.npy")
-labels = np.load(f"embeddings/labels_{model_name}.npy")
+normalize = args["normalize"]
+metric = args["metric"]
+output = np.load(f"embeddings/output_{name}.npy")
+labels = np.load(f"embeddings/labels_{name}.npy")
 
 """
+Dataset sizes:
 2013: 421238
 2013: 115951 (ignore mix)
 2014: 329832
@@ -34,48 +36,49 @@ labels = np.load(f"embeddings/labels_{model_name}.npy")
 NUM_TRAIN = 115951
 NUM_TEST = 63676
 
-# normalize output to unit length
-output /= np.linalg.norm(output, axis=1, keepdims=True)
+# normalize outputs
+if normalize:
+    output /= np.linalg.norm(output, axis=1, keepdims=True)
 
 output_train = output[:NUM_TRAIN]
 output_test = output[NUM_TRAIN:]
+labels_train = labels[:NUM_TRAIN]
+labels_test = labels[NUM_TRAIN:]
 
 # kmeans
-kmeans = KMeans(n_clusters=103, random_state=0).fit(output) # assuming 103 classes, TODO: estimate classes
+kmeans = KMeans(n_clusters=103, random_state=0).fit(output)  # assuming 103 classes
 preds = kmeans.predict(output_test)
 
-# optimal assignment using linear sum assignment (cost is accuracy)
-# preds and labels are [0, 102] and [0, 102] respectively
-cost_matrix = np.zeros((103, 103))
+# optimal assignment to maximize accuracy
+cost = np.zeros((103, 103))
 for i in range(preds.shape[0]):
-    cost_matrix[int(preds[i]), int(labels[NUM_TRAIN + i])] += 1
+    cost[int(preds[i]), int(labels_test[i])] += 1
+row_ind, col_ind = linear_sum_assignment(cost, maximize=True)
 
-row_ind, col_ind = linear_sum_assignment(cost_matrix, maximize=True)
 optimal_preds = np.zeros_like(preds)
 for i in range(preds.shape[0]):
     optimal_preds[i] = col_ind[int(preds[i])]
 
-# calculate accuracy and f1 score
-acc = accuracy_score(labels[NUM_TRAIN:], optimal_preds)
-f1 = f1_score(labels[NUM_TRAIN:], optimal_preds, labels=list(range(103)), average="macro")
+# metrics
+acc = accuracy_score(labels_test, optimal_preds)
+f1 = f1_score(labels_test, optimal_preds, labels=list(range(103)), average="macro")
 
-print(f"{model_name}")
+print(f"{name}")
 print(f"Accuracy: {acc}")
-print(f"F1 score: {f1}")
+print(f"Macro F1: {f1}")
+print("\n")
 
 # classwise macro f1
-f1 = f1_score(labels[NUM_TRAIN:], optimal_preds, labels=list(range(103)), average=None)
+f1 = f1_score(labels_test, optimal_preds, labels=list(range(103)), average=None)
 for i in range(103):
-    print(f"Class {i}: {f1[i]}")
+    print(f"class {i}: {f1[i]}")
 
 if visualize:
-    # plot the centroids
     centroids = kmeans.cluster_centers_
-    # tsne
     affinities_multiscale_mixture = openTSNE.affinity.Multiscale(
         np.concatenate((output, centroids), axis=0),
         perplexities=[50, 500],
-        metric="cosine",
+        metric=metric,
         n_jobs=8,
         random_state=3,
     )
@@ -87,26 +90,25 @@ if visualize:
         initialization=init,
     )
 
-    # plot the embedding
+    # plotting
     plt.figure(figsize=(10, 10))
     plt.scatter(
-        embedding[:output.shape[0], 0],
-        embedding[:output.shape[0], 1],
-        c=labels, 
+        embedding[: output.shape[0], 0],
+        embedding[: output.shape[0], 1],
+        c=labels,
         cmap="Spectral",
         s=0.1,
         alpha=0.8,
     )
     plt.scatter(
-        embedding[output.shape[0]:, 0],
-        embedding[output.shape[0]:, 1],
+        embedding[output.shape[0] :, 0],
+        embedding[output.shape[0] :, 1],
         c="black",
         s=10,
         alpha=1,
     )
     plt.axis("off")
-    plt.savefig(f"figures/tsne_{model_name}.png", dpi=600)
+    plt.savefig(f"figures/tsne_{name}.png", dpi=600)
     plt.close()
 
-    # save embedding
-    np.save(f"embeddings/embeds_{model_name}.npy", embedding)
+    np.save(f"embeddings/embeds_{name}.npy", embedding)

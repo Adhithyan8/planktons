@@ -9,21 +9,23 @@ from sklearn.neighbors import KNeighborsClassifier
 
 matplotlib.use("Agg")
 
-# parser
+# parse arguments
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument("-m", "--model", default="resnet18", help="Model architecture")
-parser.add_argument(
-    "-v", "--visualize", action="store_true", help="Visualize 2D embedding with tSNE"
-)
+parser.add_argument("--name", default="resnet18")
+parser.add_argument("--visualize", action="store_true", help="tSNE")
+parser.add_argument("--metric", default="cosine")
+parser.add_argument("--knn-neighbors", type=int, default=5)
 args = vars(parser.parse_args())
 
-# load the embeddings
-model_name = args["model"]
+name = args["name"]
 visualize = args["visualize"]
-output = np.load(f"embeddings/output_{model_name}.npy")
-labels = np.load(f"embeddings/labels_{model_name}.npy")
+metric = args["metric"]
+neighbors = args["knn_neighbors"]
+output = np.load(f"embeddings/output_{name}.npy")
+labels = np.load(f"embeddings/labels_{name}.npy")
 
 """
+Dataset sizes:
 2013: 421238
 2013: 115951 (ignore mix)
 2014: 329832
@@ -34,11 +36,10 @@ NUM_TRAIN = 115951
 NUM_TEST = 63676
 
 if visualize:
-    # tsne
     affinities_multiscale_mixture = openTSNE.affinity.Multiscale(
         output,
         perplexities=[50, 500],
-        metric="cosine",
+        metric=metric,
         n_jobs=8,
         random_state=3,
     )
@@ -48,35 +49,37 @@ if visualize:
         initialization=init,
     )
 
-    # plot the embedding
+    # plotting
     plt.figure(figsize=(10, 10))
     plt.scatter(
         embedding[:, 0], embedding[:, 1], c=labels, cmap="Spectral", s=0.1, alpha=0.8
     )
     plt.axis("off")
-    plt.savefig(f"figures/tsne_{model_name}.png", dpi=600)
+    plt.savefig(f"figures/tsne_{name}.png", dpi=600)
     plt.close()
 
-    # save embedding
-    np.save(f"embeddings/embeds_{model_name}.npy", embedding)
+    np.save(f"embeddings/embeds_{name}.npy", embedding)
 
 output_train = output[:NUM_TRAIN]
 output_test = output[NUM_TRAIN:]
+labels_train = labels[:NUM_TRAIN]
+labels_test = labels[NUM_TRAIN:]
 
-# knn
-knn = KNeighborsClassifier(n_neighbors=5, n_jobs=8, metric="cosine")
-knn.fit(output_train, labels[:NUM_TRAIN])
-
-# test
+# knn fit on training data
+knn = KNeighborsClassifier(n_neighbors=neighbors, n_jobs=8, metric=metric)
+knn.fit(output_train, labels_train)
 preds = knn.predict(output_test)
-f1 = f1_score(labels[NUM_TRAIN:], preds, labels=list(range(103)), average="macro")
-acc = accuracy_score(labels[NUM_TRAIN:], preds)
 
-print(f"{model_name}")
+# metrics
+f1 = f1_score(labels_test, preds, labels=list(range(103)), average="macro")
+acc = accuracy_score(labels_test, preds)
+
+print(f"{name}")
 print(f"Accuracy: {acc}")
-print(f"F1 score: {f1}")
+print(f"Macro F1: {f1}")
+print("\n")
 
-# class wise macro f1 - labels range from 0 to 102
-f1 = f1_score(labels[NUM_TRAIN:], preds, labels=list(range(103)), average=None)
+# class wise macro f1
+f1 = f1_score(labels_test, preds, labels=list(range(103)), average=None)
 for i in range(103):
-    print(f"Class {i}: {f1[i]}")
+    print(f"class {i}: {f1[i]}")
