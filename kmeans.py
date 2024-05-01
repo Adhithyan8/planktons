@@ -75,20 +75,23 @@ for i in range(103):
 
 if visualize:
     centroids = kmeans.cluster_centers_
-    affinities_multiscale_mixture = openTSNE.affinity.Multiscale(
-        np.concatenate((output, centroids), axis=0),
-        perplexities=[50, 500],
-        metric=metric,
-        n_jobs=8,
-        random_state=3,
-    )
-    init = openTSNE.initialization.pca(
-        np.concatenate((output, centroids), axis=0), random_state=42
-    )
-    embedding = openTSNE.TSNE(n_jobs=8).fit(
-        affinities=affinities_multiscale_mixture,
-        initialization=init,
-    )
+    if output.shape[1] > 2:
+        affinities_multiscale_mixture = openTSNE.affinity.Multiscale(
+            np.concatenate((output, centroids), axis=0),
+            perplexities=[50, 500],
+            metric=metric,
+            n_jobs=8,
+            random_state=3,
+        )
+        init = openTSNE.initialization.pca(
+            np.concatenate((output, centroids), axis=0), random_state=42
+        )
+        embedding = openTSNE.TSNE(n_jobs=8).fit(
+            affinities=affinities_multiscale_mixture,
+            initialization=init,
+        )
+    else:
+        embedding = np.concatenate((output, centroids), axis=0)
 
     # plotting
     plt.figure(figsize=(10, 10))
