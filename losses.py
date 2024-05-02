@@ -181,13 +181,13 @@ class InfoNCECauchySelfSupervised(torch.nn.Module):
         pos = torch.trace(z12.log()) / b
 
         n1 = (
-            torch.hstack((z11.masked_fill_(torch.eye(b, device=device).bool(), 0.0), z12))
+            torch.hstack((z11 - torch.eye(b, device=device).float(), z12))
             .sum(dim=1)
             .log()
             .mean()
         )
         n2 = (
-            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b, device=device).bool(), 0.0)))
+            torch.hstack((z12.T, z22 - torch.eye(b, device=device).float()))
             .sum(dim=1)
             .log()
             .mean()
@@ -237,13 +237,13 @@ class InfoNCECauchySupervised(torch.nn.Module):
         pos = torch.cat((p1, p2)).mean()
 
         n1 = (
-            torch.hstack((z11.masked_fill_(torch.eye(b, device=device).bool(), 0.0), z12))
+            torch.hstack((z11 - torch.eye(b, device=device).float(), z12))
             .sum(dim=1)
             .log()
             .mean()
         )
         n2 = (
-            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b, device=device).bool(), 0.0)))
+            torch.hstack((z12.T, z22 - torch.eye(b, device=device).float()))
             .sum(dim=1)
             .log()
             .mean()
@@ -342,7 +342,7 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
         n1 = (
             torch.hstack(
                 (
-                    z_u11.masked_fill_(torch.eye(b_u, device=device).bool(), 0.0),
+                    z_u11 - torch.eye(b_u, device=device).float(),
                     z_u12,
                     z_u1l1,
                     z_u1l2,
@@ -355,7 +355,7 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
             torch.hstack(
                 (
                     z_u12.T,
-                    z_u22.masked_fill_(torch.eye(b_u, device=device).bool(), 0.0),
+                    z_u22 - torch.eye(b_u, device=device).float(),
                     z_u2l1,
                     z_u2l2,
                 )
@@ -368,7 +368,7 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
                 (
                     z_u1l1.T,
                     z_u2l1.T,
-                    z_l11.masked_fill_(torch.eye(b_l, device=device).bool(), 0.0),
+                    z_l11 - torch.eye(b_l, device=device).float(),
                     z_l12,
                 )
             )
@@ -381,7 +381,7 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
                     z_u1l2.T,
                     z_u2l2.T,
                     z_l12.T,
-                    z_l22.masked_fill_(torch.eye(b_l, device=device).bool(), 0.0),
+                    z_l22 - torch.eye(b_l, device=device).float(),
                 )
             )
             .sum(dim=1)

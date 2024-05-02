@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from utils import Padding, contrastive_datapipe
-from losses import InfoNCECauchySelfSupervised
+from losses import InfoNCECauchySelfSupervised, InfoNCECauchySupervised, InfoNCECauchySemiSupervised
 
 # parse arguments
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -115,7 +115,10 @@ scheduler = torch.optim.lr_scheduler.OneCycleLR(
 )
 
 # loss
-criterion = InfoNCECauchySelfSupervised()
+criterion = InfoNCECauchySemiSupervised(temperature=1.0)
+criterion1 = InfoNCECauchySelfSupervised(temperature=0.5)
+criterion2 = InfoNCECauchySupervised(temperature=0.5)
+lamda = 0.5
 
 print(f"Training {name} model")
 # train the model
@@ -127,7 +130,7 @@ for epoch in range(n_epochs):
         img = torch.cat((img1, img2), dim=0)
         id = torch.cat((id, id), dim=0)
         output = model(img)
-        loss = criterion(output)
+        loss = criterion(output, id)
         loss.backward()
         optimizer.step()
         scheduler.step()
