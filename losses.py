@@ -8,7 +8,7 @@ class InfoNCECosineSelfSupervised(torch.nn.Module):
         super(InfoNCECosineSelfSupervised, self).__init__()
         self.temperature = temperature
 
-    def forward(self, features):
+    def forward(self, features, labels):
         b = features.shape[0] // 2
         z1 = torch.nn.functional.normalize(features[:b])
         z2 = torch.nn.functional.normalize(features[b:])
@@ -183,7 +183,7 @@ class InfoNCECauchySelfSupervised(torch.nn.Module):
         super(InfoNCECauchySelfSupervised, self).__init__()
         self.temperature = temperature
 
-    def forward(self, features):
+    def forward(self, features, labels):
         b = features.shape[0] // 2
         z1 = features[:b]
         z2 = features[b:]

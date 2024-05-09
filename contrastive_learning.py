@@ -1,35 +1,11 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
-import albumentations as A
-import torch
-from torch.utils.data import DataLoader
+from torch import cat, hub, nn, no_grad, optim, save, utils
+import lightning as L
 
-from losses import (
-    InfoNCECauchySelfSupervised,
-    InfoNCECauchySemiSupervised,
-    InfoNCECauchySupervised,
-)
+from config import CONTRASTIVE_TRANSFORM
+from losses import InfoNCECosineSelfSupervised
 from utils import Padding, contrastive_datapipe
-
-# parse arguments
-parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument("--name", default="selfcy_resnet18")
-parser.add_argument("--batch-size", type=int, default=2048)
-parser.add_argument("--epochs", type=int, default=250)
-parser.add_argument("--pretrained", action="store_true", help="Use pretrained model")
-parser.add_argument("--freeze", action="store_true", help="Freeze early layers")
-parser.add_argument("--head-dim", type=int, default=128)
-
-args = vars(parser.parse_args())
-name = args["name"]
-batch_size = args["batch_size"]
-n_epochs = args["epochs"]
-pretrained = args["pretrained"]
-freeze = args["freeze"]
-head_dim = args["head_dim"]
-padding = Padding.REFLECT
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
 Dataset sizes:
@@ -43,105 +19,121 @@ NUM_TRAIN = 115951
 NUM_TEST = 63676
 NUM_TOTAL = NUM_TRAIN + NUM_TEST
 
-# transforms and dataloaders
-contrastive_transform = A.Compose(
-    [
-        A.ShiftScaleRotate(p=0.5),
-        A.Flip(p=0.5),
-        A.CoarseDropout(fill_value=200),
-        A.OneOf(
-            [
-                A.RandomBrightnessContrast(),
-                A.AdvancedBlur(),
-            ],
-        ),
-        A.ToRGB(),
-        A.ToFloat(max_value=255),
-        A.Normalize(max_pixel_value=1.0),
-        A.RandomResizedCrop(128, 128, scale=(0.2, 1.0)),
-    ]
-)
 
-datapipe = contrastive_datapipe(
-    [
-        "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
-        "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
-    ],
-    num_images=NUM_TOTAL,
-    transforms=contrastive_transform,
-    padding=padding,
-    ignore_mix=True,
-    mask_label=True,
-)
+class LightningContrastive(L.LightningModule):
+    def __init__(self, head_dim: int, pretrained: bool, loss: nn.Module, n_epochs: int):
+        super().__init__()
+        backbone_resnet = hub.load(
+            "pytorch/vision:v0.9.0",
+            "resnet18",
+            pretrained=pretrained,
+        )
+        if pretrained:
+            frozen_layers = list(backbone_resnet.children())[:-3]
+            self.backbone_frozen = nn.Sequential(*frozen_layers)
+            self.backbone_frozen.eval()
 
-dataloader = DataLoader(datapipe, batch_size=batch_size, shuffle=True, num_workers=16)
+            trainable_layers = list(backbone_resnet.children())[-3:-1]
+            self.backbone_trainable = nn.Sequential(*trainable_layers)
+        else:
+            self.backbone_frozen = nn.Identity()
 
-# load model
-backbone = torch.hub.load(
-    "pytorch/vision:v0.9.0",
-    "resnet18",
-    pretrained=pretrained,
-)
-backbone.fc = torch.nn.Identity()
+            trainable_layers = list(backbone_resnet.children())[:-1]
+            self.backbone_trainable = nn.Sequential(*trainable_layers)
 
-# freezing early layers
-if freeze:
-    for param in backbone.parameters():
-        param.requires_grad = False
-    for param in backbone.layer4.parameters():
-        param.requires_grad = True
-else:
-    for param in backbone.parameters():
-        param.requires_grad = True
+        self.projection_head = nn.Sequential(
+            nn.Linear(512, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, head_dim),
+        )
+        self.loss = loss
+        self.epochs = n_epochs
 
-projection_head = torch.nn.Sequential(
-    torch.nn.Linear(512, 1024),
-    torch.nn.ReLU(),
-    torch.nn.Linear(1024, head_dim),
-)
+    def forward(self, x):
+        with no_grad():
+            x = self.backbone_frozen(x)
+        x = self.backbone_trainable(x)
+        x = self.projection_head(x)
+        return x
 
-# combine the model and the projection head
-model = torch.nn.Sequential(backbone, projection_head)
+    def training_step(self, batch, batch_idx):
+        x1, x2, id = batch
+        x = cat((x1, x2), dim=0)
+        id = cat((id, id), dim=0)
+        out = self(x)
+        loss = self.loss(out, id)
+        self.log("train_loss", loss, on_epoch=True, prog_bar=True)
+        return loss
 
-# optimizer
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.1, weight_decay=5e-4)
+    def predict_step(self, batch, batch_idx):
+        x, id = batch
+        out = self(x)
+        return out, id
 
-# lr scheduler with linear warmup and cosine decay
-max_lr = 0.03 * (batch_size / 256)
-scheduler = torch.optim.lr_scheduler.OneCycleLR(
-    optimizer,
-    max_lr=max_lr,
-    epochs=n_epochs,
-    steps_per_epoch=96,  # weird bug
-    pct_start=0.02,
-    div_factor=1e4,  # start close to 0
-    final_div_factor=1e4,  # end close to 0
-)
+    def configure_optimizers(self):
+        trainable_params = list(self.backbone_trainable.parameters()) + list(
+            self.projection_head.parameters()
+        )
+        optimizer = optim.AdamW(trainable_params, weight_decay=5e-4)
+        scheduler = optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=0.12,
+            epochs=self.epochs,
+            steps_per_epoch=96,
+            pct_start=0.02,
+            div_factor=1e4,
+            final_div_factor=1e4,
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {"scheduler": scheduler, "interval": "step"},
+        }
 
-# loss
-criterion = InfoNCECauchySemiSupervised(temperature=1.0)
-criterion1 = InfoNCECauchySelfSupervised(temperature=0.5)
-criterion2 = InfoNCECauchySupervised(temperature=0.5)
-lamda = 0.5
 
-print(f"Training {name} model")
-# train the model
-model.train().to(device)
-for epoch in range(n_epochs):
-    for i, (img1, img2, id) in enumerate(dataloader):
-        img1, img2, id = img1.to(device), img2.to(device), id.to(device)
-        optimizer.zero_grad()
-        img = torch.cat((img1, img2), dim=0)
-        id = torch.cat((id, id), dim=0)
-        output = model(img)
-        loss = criterion(output, id)
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
+def main(args):
+    model = LightningContrastive(
+        head_dim=args.head_dim,
+        pretrained=args.pretrained,
+        loss=InfoNCECosineSelfSupervised(),
+        n_epochs=args.epochs,
+    )
 
-        if i % 100 == 0:
-            print(f"Epoch [{epoch+1}/{n_epochs}], Loss: {loss.item():.4f}")
+    # transforms and dataloaders
+    datapipe = contrastive_datapipe(
+        [
+            "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
+            "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
+        ],
+        num_images=NUM_TOTAL,
+        transforms=CONTRASTIVE_TRANSFORM,
+        padding=Padding.REFLECT,
+        ignore_mix=True,
+        mask_label=True,
+    )
 
-# save the model
-torch.save(model[0].state_dict(), f"{name}_backbone.pth")
-torch.save(model[1].state_dict(), f"{name}_head.pth")
+    dataloader = utils.data.DataLoader(
+        datapipe, batch_size=args.batch_size, shuffle=True, num_workers=16
+    )
+
+    trainer = L.Trainer(
+        max_epochs=args.epochs, accelerator="gpu", devices=args.devices, strategy="ddp"
+    )
+    trainer.fit(model, dataloader)
+
+    # save the model
+    save(model.backbone_trainable.state_dict(), f"{args.name}_backbone.pth")
+    save(model.projection_head.state_dict(), f"{args.name}_head.pth")
+
+
+if __name__ == "__main__":
+    # parse arguments
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--name", default="selfsupcauchy_resnet18")
+    parser.add_argument("--batch-size", type=int, default=2048)
+    parser.add_argument("--epochs", type=int, default=250)
+    parser.add_argument("--pretrained", action="store_true")
+    parser.add_argument("--head-dim", type=int, default=128)
+    parser.add_argument("--devices", type=int, default=8)
+    args = parser.parse_args()
+
+    main(args)

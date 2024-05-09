@@ -1,9 +1,9 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
-import albumentations as A
 import torch
 from torch.utils.data import DataLoader
 
+from config import CONSTRASTIVE_TRANSFORM
 from utils import Padding, contrastive_datapipe
 from losses import (
     InfoNCECauchySelfSupervised,
@@ -42,23 +42,6 @@ NUM_TEST = 63676
 NUM_TOTAL = NUM_TRAIN + NUM_TEST
 
 # transforms and dataloaders
-contrastive_transform = A.Compose(
-    [
-        A.ShiftScaleRotate(p=0.5),
-        A.Flip(p=0.5),
-        A.CoarseDropout(fill_value=200),
-        A.OneOf(
-            [
-                A.RandomBrightnessContrast(),
-                A.AdvancedBlur(),
-            ],
-        ),
-        A.ToRGB(),
-        A.ToFloat(max_value=255),
-        A.Normalize(max_pixel_value=1.0),
-        A.RandomResizedCrop(128, 128, scale=(0.2, 1.0)),
-    ]
-)
 
 datapipe = contrastive_datapipe(
     [
@@ -66,7 +49,7 @@ datapipe = contrastive_datapipe(
         "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
     ],
     num_images=NUM_TOTAL,
-    transforms=contrastive_transform,
+    transforms=CONSTRASTIVE_TRANSFORM,
     padding=padding,
     ignore_mix=True,
     mask_label=True,
