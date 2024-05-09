@@ -10,4 +10,4 @@ module purge
 module load scikit-learn/1.1.2-foss-2022a
 module load matplotlib/3.5.2-foss-2022a
 source my_python/bin/activate
-python kmeans.py --name semisupcauchy_resnet18 --visualize --metric cosine --normalize
+python kmeans.py --name tsim_semisupcauchy_resnet18_head --visualize --visualize-large --metric euclidean

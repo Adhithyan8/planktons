@@ -8,4 +8,4 @@
 module purge
 module load PyTorch-bundle/1.12.1-foss-2022a-CUDA-11.7.0
 source my_python/bin/activate
-python contrastive_inference.py --name semisupcauchy_resnet18 --head-dim 128 --head
+python contrastive_inference.py --name tsim_semisupcauchy_resnet18 --head --head-dim 2

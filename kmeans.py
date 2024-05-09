@@ -14,12 +14,14 @@ matplotlib.use("Agg")
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument("--name", default="resnet18")
 parser.add_argument("--visualize", action="store_true", help="tSNE")
+parser.add_argument("--visualize-large", action="store_true", help="tSNE")
 parser.add_argument("--normalize", action="store_true", help="normalize embeddings")
 parser.add_argument("--metric", default="cosine")
 args = vars(parser.parse_args())
 
 name = args["name"]
 visualize = args["visualize"]
+visualize_large = args["visualize_large"]
 normalize = args["normalize"]
 metric = args["metric"]
 output = np.load(f"embeddings/output_{name}.npy")
@@ -74,24 +76,23 @@ for i in range(103):
     print(f"class {i}: {f1[i]}")
 
 if visualize:
-    centroids = kmeans.cluster_centers_
     if output.shape[1] > 2:
         affinities_multiscale_mixture = openTSNE.affinity.Multiscale(
-            np.concatenate((output, centroids), axis=0),
+            output,
             perplexities=[50, 500],
             metric=metric,
             n_jobs=8,
             random_state=3,
         )
         init = openTSNE.initialization.pca(
-            np.concatenate((output, centroids), axis=0), random_state=42
+            output, random_state=42
         )
         embedding = openTSNE.TSNE(n_jobs=8).fit(
             affinities=affinities_multiscale_mixture,
             initialization=init,
         )
     else:
-        embedding = np.concatenate((output, centroids), axis=0)
+        embedding = output
 
     # plotting
     plt.figure(figsize=(10, 10))
@@ -103,15 +104,29 @@ if visualize:
         s=0.1,
         alpha=0.8,
     )
-    plt.scatter(
-        embedding[output.shape[0] :, 0],
-        embedding[output.shape[0] :, 1],
-        c="black",
-        s=10,
-        alpha=1,
-    )
     plt.axis("off")
     plt.savefig(f"figures/tsne_{name}.png", dpi=600)
     plt.close()
 
     np.save(f"embeddings/embeds_{name}.npy", embedding)
+
+if visualize_large:
+    embedding = output
+    large_class_labels = [88, 49, 95, 8, 90, 19, 65, 5, 66, 38]
+    large_class_names = ["detritus", "Leptocylindrus", "mix_elongated", "Chaetoceros", "dino30", "Cylindrotheca", "Rhizosolenia", "Cerataulina", "Skeletonema", "Guinardia_delicatula"]
+
+    # plotting
+    plt.figure(figsize=(10, 10))
+    for i, label in enumerate(large_class_labels):
+        plt.scatter(
+            embedding[labels == label, 0],
+            embedding[labels == label, 1],
+            c=f"C{i}",
+            s=1.0,
+            alpha=0.5,
+            label=large_class_names[i],
+        )
+    plt.axis("off")
+    plt.legend()
+    plt.savefig(f"figures/tsne_{name}_large.png", dpi=600)
+    plt.close()
