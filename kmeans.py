@@ -84,9 +84,7 @@ if visualize:
             n_jobs=8,
             random_state=3,
         )
-        init = openTSNE.initialization.pca(
-            output, random_state=42
-        )
+        init = openTSNE.initialization.pca(output, random_state=42)
         embedding = openTSNE.TSNE(n_jobs=8).fit(
             affinities=affinities_multiscale_mixture,
             initialization=init,
@@ -113,7 +111,18 @@ if visualize:
 if visualize_large:
     embedding = output
     large_class_labels = [88, 49, 95, 8, 90, 19, 65, 5, 66, 38]
-    large_class_names = ["detritus", "Leptocylindrus", "mix_elongated", "Chaetoceros", "dino30", "Cylindrotheca", "Rhizosolenia", "Cerataulina", "Skeletonema", "Guinardia_delicatula"]
+    large_class_names = [
+        "detritus",
+        "Leptocylindrus",
+        "mix_elongated",
+        "Chaetoceros",
+        "dino30",
+        "Cylindrotheca",
+        "Rhizosolenia",
+        "Cerataulina",
+        "Skeletonema",
+        "Guinardia_delicatula",
+    ]
 
     # plotting
     plt.figure(figsize=(10, 10))

@@ -19,12 +19,24 @@ class InfoNCECosineSelfSupervised(torch.nn.Module):
         pos = torch.trace(z12) / b
 
         n1 = (
-            torch.hstack((z11.masked_fill_(torch.eye(b, device=device).bool(), float("-inf")), z12))
+            torch.hstack(
+                (
+                    z11.masked_fill_(torch.eye(b, device=device).bool(), float("-inf")),
+                    z12,
+                )
+            )
             .logsumexp(dim=1)
             .mean()
         )
         n2 = (
-            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b, device=device).bool().to(device), float("-inf"))))
+            torch.hstack(
+                (
+                    z12.T,
+                    z22.masked_fill_(
+                        torch.eye(b, device=device).bool().to(device), float("-inf")
+                    ),
+                )
+            )
             .logsumexp(dim=1)
             .mean()
         )
@@ -64,12 +76,22 @@ class InfoNCECosineSupervised(torch.nn.Module):
         pos = torch.cat((p1, p2)).mean()
 
         n1 = (
-            torch.hstack((z11.masked_fill_(torch.eye(b, device=device).bool(), float("-inf")), z12))
+            torch.hstack(
+                (
+                    z11.masked_fill_(torch.eye(b, device=device).bool(), float("-inf")),
+                    z12,
+                )
+            )
             .logsumexp(dim=1)
             .mean()
         )
         n2 = (
-            torch.hstack((z12.T, z22.masked_fill_(torch.eye(b, device=device).bool(), float("-inf"))))
+            torch.hstack(
+                (
+                    z12.T,
+                    z22.masked_fill_(torch.eye(b, device=device).bool(), float("-inf")),
+                )
+            )
             .logsumexp(dim=1)
             .mean()
         )

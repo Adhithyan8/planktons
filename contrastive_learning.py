@@ -4,8 +4,12 @@ import albumentations as A
 import torch
 from torch.utils.data import DataLoader
 
+from losses import (
+    InfoNCECauchySelfSupervised,
+    InfoNCECauchySemiSupervised,
+    InfoNCECauchySupervised,
+)
 from utils import Padding, contrastive_datapipe
-from losses import InfoNCECauchySelfSupervised, InfoNCECauchySupervised, InfoNCECauchySemiSupervised
 
 # parse arguments
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)

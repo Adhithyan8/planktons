@@ -5,7 +5,11 @@ import torch
 from torch.utils.data import DataLoader
 
 from utils import Padding, contrastive_datapipe
-from losses import InfoNCECauchySelfSupervised, InfoNCECauchySupervised, InfoNCECauchySemiSupervised
+from losses import (
+    InfoNCECauchySelfSupervised,
+    InfoNCECauchySupervised,
+    InfoNCECauchySemiSupervised,
+)
 
 # parse arguments
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
