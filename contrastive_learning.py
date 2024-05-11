@@ -1,11 +1,14 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
-from torch import cat, hub, nn, no_grad, optim, save, utils
-import lightning as L
+import torch
+from torch import hub, nn, optim, utils
+import pytorch_lightning as L
 
 from config import CONTRASTIVE_TRANSFORM
 from losses import InfoNCECosineSelfSupervised
 from utils import Padding, contrastive_datapipe
+
+torch.set_float32_matmul_precision("medium")
 
 """
 Dataset sizes:
@@ -23,23 +26,20 @@ NUM_TOTAL = NUM_TRAIN + NUM_TEST
 class LightningContrastive(L.LightningModule):
     def __init__(self, head_dim: int, pretrained: bool, loss: nn.Module, n_epochs: int):
         super().__init__()
-        backbone_resnet = hub.load(
+        self.backbone = hub.load(
             "pytorch/vision:v0.9.0",
             "resnet18",
             pretrained=pretrained,
         )
+        self.backbone.fc = nn.Identity()
         if pretrained:
-            frozen_layers = list(backbone_resnet.children())[:-3]
-            self.backbone_frozen = nn.Sequential(*frozen_layers)
-            self.backbone_frozen.eval()
-
-            trainable_layers = list(backbone_resnet.children())[-3:-1]
-            self.backbone_trainable = nn.Sequential(*trainable_layers)
+            for param in self.backbone.parameters():
+                param.requires_grad_(False)
+            for param in self.backbone.layer4.parameters():
+                param.requires_grad_(True)
         else:
-            self.backbone_frozen = nn.Identity()
-
-            trainable_layers = list(backbone_resnet.children())[:-1]
-            self.backbone_trainable = nn.Sequential(*trainable_layers)
+            for param in self.backbone.parameters():
+                param.requires_grad_(True)
 
         self.projection_head = nn.Sequential(
             nn.Linear(512, 1024),
@@ -50,19 +50,17 @@ class LightningContrastive(L.LightningModule):
         self.epochs = n_epochs
 
     def forward(self, x):
-        with no_grad():
-            x = self.backbone_frozen(x)
-        x = self.backbone_trainable(x)
+        x = self.backbone(x)
         x = self.projection_head(x)
         return x
 
     def training_step(self, batch, batch_idx):
         x1, x2, id = batch
-        x = cat((x1, x2), dim=0)
-        id = cat((id, id), dim=0)
+        x = torch.cat((x1, x2), dim=0)
+        id = torch.cat((id, id), dim=0)
         out = self(x)
         loss = self.loss(out, id)
-        self.log("train_loss", loss, on_epoch=True, prog_bar=True)
+        self.log("train_loss", loss, prog_bar=True)
         return loss
 
     def predict_step(self, batch, batch_idx):
@@ -71,23 +69,17 @@ class LightningContrastive(L.LightningModule):
         return out, id
 
     def configure_optimizers(self):
-        trainable_params = list(self.backbone_trainable.parameters()) + list(
-            self.projection_head.parameters()
-        )
-        optimizer = optim.AdamW(trainable_params, weight_decay=5e-4)
+        optimizer = optim.AdamW(self.parameters(), weight_decay=5e-4)
         scheduler = optim.lr_scheduler.OneCycleLR(
             optimizer,
             max_lr=0.12,
+            total_steps=self.epochs,
             epochs=self.epochs,
-            steps_per_epoch=96,
             pct_start=0.02,
             div_factor=1e4,
             final_div_factor=1e4,
         )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {"scheduler": scheduler, "interval": "step"},
-        }
+        return [optimizer], [scheduler]
 
 
 def main(args):
@@ -112,17 +104,17 @@ def main(args):
     )
 
     dataloader = utils.data.DataLoader(
-        datapipe, batch_size=args.batch_size, shuffle=True, num_workers=16
+        datapipe, batch_size=args.batch_size, shuffle=True, num_workers=args.devices * 4,
     )
 
     trainer = L.Trainer(
-        max_epochs=args.epochs, accelerator="gpu", devices=args.devices, strategy="ddp"
+        max_epochs=args.epochs, accelerator="gpu", devices=args.devices, num_nodes=args.nodes, strategy="ddp",
     )
     trainer.fit(model, dataloader)
 
     # save the model
-    save(model.backbone_trainable.state_dict(), f"{args.name}_backbone.pth")
-    save(model.projection_head.state_dict(), f"{args.name}_head.pth")
+    torch.save(model.backbone.state_dict(), f"{args.name}_backbone.pth")
+    torch.save(model.projection_head.state_dict(), f"{args.name}_head.pth")
 
 
 if __name__ == "__main__":
@@ -133,7 +125,8 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=250)
     parser.add_argument("--pretrained", action="store_true")
     parser.add_argument("--head-dim", type=int, default=128)
-    parser.add_argument("--devices", type=int, default=8)
+    parser.add_argument("--devices", type=int, default=1)
+    parser.add_argument("--nodes", type=int, default=1)
     args = parser.parse_args()
 
     main(args)

@@ -1,6 +1,7 @@
 .vscode/
 __pycache__/
 planktons_dataset/
+lightning_logs/
 embeddings/
 *.err
 *.out
