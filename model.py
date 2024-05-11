@@ -2,8 +2,16 @@ import torch
 from torch import hub, nn, optim
 import pytorch_lightning as L
 
+
 class LightningContrastive(L.LightningModule):
-    def __init__(self, head_dim: int, pretrained: bool, loss: nn.Module, n_epochs: int, use_head: bool = False):
+    def __init__(
+        self,
+        head_dim: int,
+        pretrained: bool,
+        loss: nn.Module,
+        n_epochs: int,
+        use_head: bool = False,
+    ):
         super().__init__()
         self.backbone = hub.load(
             "pytorch/vision:v0.9.0",

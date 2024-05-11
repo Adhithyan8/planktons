@@ -1,12 +1,12 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
+import pytorch_lightning as L
 import torch
 from torch.utils.data import DataLoader
-import pytorch_lightning as L
 
 from config import CONTRASTIVE_TRANSFORM
-from losses import InfoNCECosineSelfSupervised
 from data import Padding, contrastive_datapipe
+from losses import InfoNCECosineSelfSupervised
 from model import LightningContrastive
 
 torch.set_float32_matmul_precision("high")
