@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from utils import Padding, inference_datapipe
+from data import Padding, inference_datapipe
 
 # parse arguments
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)

@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from config import CONSTRASTIVE_TRANSFORM
-from utils import Padding, contrastive_datapipe
+from data import Padding, contrastive_datapipe
 from losses import (
     InfoNCECauchySelfSupervised,
     InfoNCECauchySupervised,

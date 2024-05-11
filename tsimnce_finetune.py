@@ -9,7 +9,7 @@ from losses import (
     InfoNCECauchySemiSupervised,
     InfoNCECauchySupervised,
 )
-from utils import Padding, contrastive_datapipe
+from data import Padding, contrastive_datapipe
 
 # parse arguments
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)

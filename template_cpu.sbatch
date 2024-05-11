@@ -7,7 +7,7 @@
 #SBATCH -e %J_slurm.err
 
 module purge
-module load scikit-learn/1.1.2-foss-2022a
-module load matplotlib/3.5.2-foss-2022a
-source my_python/bin/activate
-python kmeans.py --name tsim_semisupcauchy_resnet18_head --visualize --visualize-large --metric euclidean
+module load scikit-learn/1.3.1-gfbf-2023a
+module load matplotlib/3.7.2-gfbf-2023a
+source my_venv/bin/activate
+python knn.py --name L_selfsupcosine_resnet18 
