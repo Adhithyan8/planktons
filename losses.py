@@ -30,9 +30,7 @@ class InfoNCECosineSelfSupervised(torch.nn.Module):
             torch.hstack(
                 (
                     z12.T,
-                    z22.masked_fill_(
-                        torch.eye(b).to(z22).bool(), float("-inf")
-                    ),
+                    z22.masked_fill_(torch.eye(b).to(z22).bool(), float("-inf")),
                 )
             )
             .logsumexp(dim=1)
@@ -200,18 +198,8 @@ class InfoNCECauchySelfSupervised(torch.nn.Module):
 
         pos = torch.trace(z12.log()) / b
 
-        n1 = (
-            torch.hstack((z11 - torch.eye(b).to(z11), z12))
-            .sum(dim=1)
-            .log()
-            .mean()
-        )
-        n2 = (
-            torch.hstack((z12.T, z22 - torch.eye(b).to(z22)))
-            .sum(dim=1)
-            .log()
-            .mean()
-        )
+        n1 = torch.hstack((z11 - torch.eye(b).to(z11), z12)).sum(dim=1).log().mean()
+        n2 = torch.hstack((z12.T, z22 - torch.eye(b).to(z22))).sum(dim=1).log().mean()
         neg = (n1 + n2) / 2
         loss = -(pos - neg)
         return loss
@@ -256,18 +244,8 @@ class InfoNCECauchySupervised(torch.nn.Module):
         )
         pos = torch.cat((p1, p2)).mean()
 
-        n1 = (
-            torch.hstack((z11 - torch.eye(b).to(z11), z12))
-            .sum(dim=1)
-            .log()
-            .mean()
-        )
-        n2 = (
-            torch.hstack((z12.T, z22 - torch.eye(b).to(z22)))
-            .sum(dim=1)
-            .log()
-            .mean()
-        )
+        n1 = torch.hstack((z11 - torch.eye(b).to(z11), z12)).sum(dim=1).log().mean()
+        n2 = torch.hstack((z12.T, z22 - torch.eye(b).to(z22))).sum(dim=1).log().mean()
         neg = (n1 + n2) / 2
         loss = -(pos - neg)
         return loss

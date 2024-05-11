@@ -104,11 +104,18 @@ def main(args):
     )
 
     dataloader = utils.data.DataLoader(
-        datapipe, batch_size=args.batch_size, shuffle=True, num_workers=args.devices * 4,
+        datapipe,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.devices * 4,
     )
 
     trainer = L.Trainer(
-        max_epochs=args.epochs, accelerator="gpu", devices=args.devices, num_nodes=args.nodes, strategy="ddp",
+        max_epochs=args.epochs,
+        accelerator="gpu",
+        devices=args.devices,
+        num_nodes=args.nodes,
+        strategy="ddp",
     )
     trainer.fit(model, dataloader)
 
