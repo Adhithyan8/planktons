@@ -4,7 +4,7 @@ import pytorch_lightning as L
 import torch
 from torch.utils.data import DataLoader
 
-from config import CONTRASTIVE_TRANSFORM
+from transforms import CONTRASTIVE_TRANSFORM
 from data import Padding, contrastive_datapipe
 from losses import InfoNCECosineSelfSupervised
 from model import LightningContrastive

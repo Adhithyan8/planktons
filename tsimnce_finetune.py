@@ -3,7 +3,7 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 import torch
 from torch.utils.data import DataLoader
 
-from config import CONTRASTIVE_TRANSFORM
+from transforms import CONTRASTIVE_TRANSFORM
 from losses import (
     InfoNCECauchySelfSupervised,
     InfoNCECauchySemiSupervised,

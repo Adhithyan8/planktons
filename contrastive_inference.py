@@ -5,7 +5,7 @@ import pytorch_lightning as L
 import torch
 from torch.utils.data import DataLoader
 
-from config import INFERENCE_TRANSFORM
+from transforms import INFERENCE_TRANSFORM
 from data import Padding, inference_datapipe
 from model import LightningContrastive
 
