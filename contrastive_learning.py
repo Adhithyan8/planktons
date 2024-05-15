@@ -4,24 +4,12 @@ import pytorch_lightning as L
 import torch
 from torch.utils.data import DataLoader
 
-from transforms import CONTRASTIVE_TRANSFORM
-from data import Padding, contrastive_datapipe
+from data import Padding, PlanktonDataModule
 from losses import InfoNCECosineSelfSupervised
 from model import LightningContrastive
+from transforms import CONTRASTIVE_TRANSFORM, INFERENCE_TRANSFORM
 
 torch.set_float32_matmul_precision("high")
-
-"""
-Dataset sizes:
-2013: 421238
-2013: 115951 (ignore mix)
-2014: 329832
-2014: 63676 (ignore mix)
-"""
-# magic numbers
-NUM_TRAIN = 115951
-NUM_TEST = 63676
-NUM_TOTAL = NUM_TRAIN + NUM_TEST
 
 
 def main(args):
@@ -32,25 +20,16 @@ def main(args):
         n_epochs=args.epochs,
     )
 
-    # transforms and dataloaders
-    datapipe = contrastive_datapipe(
+    dataset = PlanktonDataModule(
         [
             "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
             "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
         ],
-        num_images=NUM_TOTAL,
-        transforms=CONTRASTIVE_TRANSFORM,
-        padding=Padding.REFLECT,
+        CONTRASTIVE_TRANSFORM,
+        INFERENCE_TRANSFORM,
+        Padding.REFLECT,
         ignore_mix=True,
-        mask_label=True,
-    )
-
-    dataloader = DataLoader(
-        datapipe,
         batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=args.devices * 4,
-        persistent_workers=True,
     )
 
     trainer = L.Trainer(
@@ -60,7 +39,7 @@ def main(args):
         num_nodes=args.nodes,
         strategy="ddp",
     )
-    trainer.fit(model, dataloader)
+    trainer.fit(model, dataset)
 
     # save the model
     torch.save(model.backbone.state_dict(), f"{args.name}_backbone.pth")
