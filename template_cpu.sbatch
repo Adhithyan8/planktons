@@ -9,5 +9,5 @@
 module purge
 module load PyTorch-Lightning/2.2.1-foss-2023a-CUDA-12.1.1
 module load PyTorch-bundle/2.1.2-foss-2023a-CUDA-12.1.1
-source my_venv/bin/activate
+source myvenv/bin/activate
 python test.py

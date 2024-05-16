@@ -3,9 +3,10 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 import pytorch_lightning as L
 import torch
 from torch.utils.data import DataLoader
+from time import time
 
-from data import Padding, PlanktonDataModule
-from losses import InfoNCECosineSelfSupervised
+from data import Padding, PlanktonDataModule, make_data
+from losses import InfoNCECauchySelfSupervised
 from model import LightningContrastive
 from transforms import CONTRASTIVE_TRANSFORM, INFERENCE_TRANSFORM
 
@@ -16,19 +17,23 @@ def main(args):
     model = LightningContrastive(
         head_dim=args.head_dim,
         pretrained=args.pretrained,
-        loss=InfoNCECosineSelfSupervised(),
+        loss=InfoNCECauchySelfSupervised(),
         n_epochs=args.epochs,
     )
 
-    dataset = PlanktonDataModule(
+    data = make_data(
         [
             "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
             "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
         ],
-        CONTRASTIVE_TRANSFORM,
-        INFERENCE_TRANSFORM,
         Padding.REFLECT,
         ignore_mix=True,
+    )
+
+    dataset = PlanktonDataModule(
+        data,
+        CONTRASTIVE_TRANSFORM,
+        INFERENCE_TRANSFORM,
         batch_size=args.batch_size,
     )
 
@@ -57,4 +62,6 @@ if __name__ == "__main__":
     parser.add_argument("--nodes", type=int, default=1)
     args = parser.parse_args()
 
+    start = time()
     main(args)
+    print(f"Time taken: {time() - start}")

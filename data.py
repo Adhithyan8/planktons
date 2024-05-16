@@ -143,27 +143,17 @@ class TestDatasetDataModule(Dataset):
 class PlanktonDataModule(L.LightningDataModule):
     def __init__(
         self,
-        paths: list,
+        data: dict,
         train_transforms,
         test_transforms,
-        padding: Padding,
-        ignore_mix: bool = True,
         batch_size: int = 2048,
     ):
         super().__init__()
-        self.paths = paths
+        self.data = data
         self.train_transforms = train_transforms
         self.test_transforms = test_transforms
-        self.padding = padding
-        self.ignore_mix = ignore_mix
         self.batch_size = batch_size
 
-    def prepare_data(self):
-        self.data = make_data(
-            self.paths,
-            self.padding,
-            self.ignore_mix,
-        )
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
