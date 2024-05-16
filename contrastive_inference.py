@@ -82,7 +82,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--name", default="finetune_resnet18")
+    parser.add_argument("--name", default="resnet18")
     parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--head-dim", type=int, default=128)
     parser.add_argument("--head", action="store_true")
