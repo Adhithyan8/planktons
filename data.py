@@ -160,7 +160,7 @@ class PlanktonDataModule(L.LightningDataModule):
                 self.data,
                 self.train_transforms,
             )
-        if stage == "test" or stage is None:
+        if stage == "predict" or stage is None:
             self.test_dataset = TestDatasetDataModule(
                 self.data,
                 self.test_transforms,
