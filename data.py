@@ -5,11 +5,11 @@ from functools import partial
 
 import albumentations as A
 import numpy as np
+import pytorch_lightning as L
 import torch
 from PIL import Image
+from torch.utils.data import DataLoader, Dataset
 from torchdata.datapipes.iter import FileOpener
-from torch.utils.data import Dataset, DataLoader
-import pytorch_lightning as L
 
 
 class Padding(Enum):
@@ -154,7 +154,6 @@ class PlanktonDataModule(L.LightningDataModule):
         self.test_transforms = test_transforms
         self.batch_size = batch_size
 
-
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
             self.train_dataset = TrainDatasetDataModule(
@@ -176,7 +175,7 @@ class PlanktonDataModule(L.LightningDataModule):
             persistent_workers=True,
         )
 
-    def test_dataloader(self):
+    def predict_dataloader(self):
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,

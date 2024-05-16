@@ -3,31 +3,18 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 import numpy as np
 import pytorch_lightning as L
 import torch
-from torch.utils.data import DataLoader
 
-from transforms import INFERENCE_TRANSFORM
-from data import Padding, inference_datapipe
+from data import Padding, PlanktonDataModule, make_data
 from model import LightningContrastive
+from transforms import CONTRASTIVE_TRANSFORM, INFERENCE_TRANSFORM
 
 torch.set_float32_matmul_precision("high")
-
-"""
-Dataset sizes:
-2013: 421238
-2013: 115951 (ignore mix)
-2014: 329832
-2014: 63676 (ignore mix)
-"""
-# magic numbers
-NUM_TRAIN = 115951
-NUM_TEST = 63676
-NUM_TOTAL = NUM_TRAIN + NUM_TEST
 
 
 def main(args):
     model = LightningContrastive(
         head_dim=args.head_dim,
-        pretrained=True,  # overwritten by loading weights
+        pretrained=True,
         loss=None,
         n_epochs=0,
         use_head=args.head,
@@ -39,34 +26,31 @@ def main(args):
         torch.load(f"model_weights/{args.name}_head.pth")
     )
 
-    # transforms and dataloaders
-    datapipe_train = inference_datapipe(
+    trn_data = make_data(
         [
             "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
         ],
-        num_images=NUM_TRAIN,
-        transforms=INFERENCE_TRANSFORM,
-        padding=Padding.REFLECT,
+        Padding.REFLECT,
+        ignore_mix=True,
     )
-    datapipe_test = inference_datapipe(
+    tst_data = make_data(
         [
             "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
         ],
-        num_images=NUM_TEST,
-        transforms=INFERENCE_TRANSFORM,
-        padding=Padding.REFLECT,
+        Padding.REFLECT,
+        ignore_mix=True,
     )
-    dataloader_train = DataLoader(
-        datapipe_train,
+    trn_dataset = PlanktonDataModule(
+        trn_data,
+        CONTRASTIVE_TRANSFORM,
+        INFERENCE_TRANSFORM,
         batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=args.devices * 4,
     )
-    dataloader_test = DataLoader(
-        datapipe_test,
+    tst_dataset = PlanktonDataModule(
+        tst_data,
+        CONTRASTIVE_TRANSFORM,
+        INFERENCE_TRANSFORM,
         batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=args.devices * 4,
     )
 
     trainer = L.Trainer(
@@ -75,19 +59,20 @@ def main(args):
         num_nodes=args.nodes,
         strategy="ddp",
     )
-    out1 = trainer.predict(model, dataloader_train)
-    out2 = trainer.predict(model, dataloader_test)
+
+    out_trn = trainer.predict(model, trn_dataset)
+    out_tst = trainer.predict(model, tst_dataset)
 
     output = np.concatenate(
         (
-            torch.cat([o[0] for o in out1]).cpu().numpy(),
-            torch.cat([o[0] for o in out2]).cpu().numpy(),
+            torch.cat([out[0] for out in out_trn]).cpu().numpy(),
+            torch.cat([out[0] for out in out_tst]).cpu().numpy(),
         )
     )
     labels = np.concatenate(
         (
-            torch.cat([o[1] for o in out1]).cpu().numpy(),
-            torch.cat([o[1] for o in out2]).cpu().numpy(),
+            torch.cat([out[1] for out in out_trn]).cpu().numpy(),
+            torch.cat([out[1] for out in out_tst]).cpu().numpy(),
         )
     )
 

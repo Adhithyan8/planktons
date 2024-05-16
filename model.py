@@ -1,6 +1,6 @@
+import pytorch_lightning as L
 import torch
 from torch import hub, nn, optim
-import pytorch_lightning as L
 
 
 class LightningContrastive(L.LightningModule):

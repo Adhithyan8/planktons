@@ -1,9 +1,8 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from time import time
 
 import pytorch_lightning as L
 import torch
-from torch.utils.data import DataLoader
-from time import time
 
 from data import Padding, PlanktonDataModule, make_data
 from losses import InfoNCECauchySelfSupervised
