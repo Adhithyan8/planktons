@@ -23,3 +23,11 @@ INFERENCE_TRANSFORM = A.Compose(
         A.Normalize(),
     ]
 )
+
+INFER_VIT_TRANSFORM = A.Compose(
+    [
+        A.Resize(252, 252),  # inference is at higher res
+        A.ToRGB(),
+        A.Normalize(),
+    ]
+)
