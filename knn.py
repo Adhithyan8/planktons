@@ -30,11 +30,11 @@ def main(args):
             output,
             perplexities=[50, 500],
             metric=args.metric,
-            n_jobs=16,
+            n_jobs=8,
             random_state=3,
         )
         init = openTSNE.initialization.pca(output, random_state=42)
-        embedding = openTSNE.TSNE(n_jobs=16).fit(
+        embedding = openTSNE.TSNE(n_jobs=8).fit(
             affinities=affinities_multiscale_mixture,
             initialization=init,
         )
@@ -45,6 +45,7 @@ def main(args):
             embedding[:, 0],
             embedding[:, 1],
             c=labels,
+            cmap="tab10",
             s=0.1,
             alpha=0.8,
         )
@@ -59,7 +60,7 @@ def main(args):
 
     knn = KNeighborsClassifier(
         n_neighbors=args.knn_neighbors,
-        n_jobs=16,
+        n_jobs=8,
         metric=args.metric,
     )
     knn.fit(out_trn, lbl_trn)

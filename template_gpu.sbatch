@@ -1,7 +1,7 @@
 #!/bin/env bash
 #SBATCH -A naiss2024-5-84
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:A100:1
+#SBATCH --gres=gpu:A40:1
 #SBATCH --ntasks-per-node=1
 #SBATCH -t 0-01:00:00
 #SBATCH -o %J_slurm.out

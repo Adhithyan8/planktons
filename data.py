@@ -30,11 +30,13 @@ def parse_datamodule(
     label2id: dict,
     labeled: list,
     padding: Padding,
+    mask: bool = True,
 ):
     fname, fcontent = data
     id = label2id[fname.split("/")[-2]]
-    if id not in labeled or fname.split("/")[-3] == "2014":
-        id = -1
+    if mask:
+        if id not in labeled or fname.split("/")[-3] == "2014":
+            id = -1
     with Image.open(fcontent) as img:
         img_array = np.array(img)
     if img_array.shape[0] > 256 or img_array.shape[1] > 256:
@@ -59,6 +61,7 @@ def datapipe_datamodule(
     paths: list,
     padding: Padding,
     ignore_mix: bool = True,
+    mask: bool = True,
 ):
     fileopener = FileOpener(paths, mode="b")
     datapipe = fileopener.load_from_zip()
@@ -77,6 +80,7 @@ def datapipe_datamodule(
             label2id=label2id,
             labeled=labeled,
             padding=padding,
+            mask=mask,
         )
     )
     return datapipe
@@ -86,11 +90,13 @@ def make_data(
     paths: list,
     padding: Padding,
     ignore_mix: bool = True,
+    mask: bool = True,
 ):
     datapipe = datapipe_datamodule(
         paths,
         padding,
         ignore_mix,
+        mask,
     )
     data = dict()
     idx = 0

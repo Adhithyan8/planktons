@@ -32,6 +32,7 @@ def main(args):
         ],
         Padding.REFLECT,
         ignore_mix=True,
+        mask=False,
     )
     tst_data = make_data(
         [
@@ -39,6 +40,7 @@ def main(args):
         ],
         Padding.REFLECT,
         ignore_mix=True,
+        mask=False,
     )
     trn_dataset = PlanktonDataModule(
         trn_data,
