@@ -20,10 +20,10 @@ def main(args):
         use_head=args.head,
     )
     model.backbone.load_state_dict(
-        torch.load(f"model_weights/{args.name}_backbone.pth")
+        torch.load(f"model_weights/{args.name}_bb.pth")
     )
     model.projection_head.load_state_dict(
-        torch.load(f"model_weights/{args.name}_head.pth")
+        torch.load(f"model_weights/{args.name}_ph.pth")
     )
 
     trn_data = make_data(
@@ -78,8 +78,8 @@ def main(args):
         )
     )
 
-    np.save(f"embeddings/output_{args.name}{'_head' if args.head else ''}.npy", output)
-    np.save(f"embeddings/labels_{args.name}{'_head' if args.head else ''}.npy", labels)
+    np.save(f"embeddings/output_{args.name}{'_ph' if args.head else ''}.npy", output)
+    np.save(f"embeddings/labels_{args.name}{'_ph' if args.head else ''}.npy", labels)
 
 
 if __name__ == "__main__":

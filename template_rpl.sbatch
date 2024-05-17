@@ -12,4 +12,4 @@
 echo "Starting job ${SLURM_JOB_ID} on ${SLURMD_NODENAME}"
 . ~/miniconda3/etc/profile.d/conda.sh
 conda activate base
-python tsimcne_vecs.py
+python tsimcne.py

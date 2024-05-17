@@ -10,4 +10,4 @@ module purge
 module load scikit-learn/1.3.1-gfbf-2023a
 module load matplotlib/3.7.2-gfbf-2023a
 source myvenv/bin/activate
-python knn.py --name L_selfsupcauchy_resnet18 --metric cosine --knn-neighbors 1
+python kmeans.py --name tsim_L_selfcauchy_ph --viz-large

@@ -11,4 +11,4 @@ module purge
 module load PyTorch-Lightning/2.2.1-foss-2023a-CUDA-12.1.1
 module load PyTorch-bundle/2.1.2-foss-2023a-CUDA-12.1.1
 source myvenv/bin/activate
-srun python contrastive_inference.py --name L_selfsupcauchy_resnet18
+srun python contrastive_inference.py --name tsim_L_selfcauchy --head-dim 2 --head

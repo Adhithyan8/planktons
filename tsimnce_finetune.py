@@ -48,15 +48,15 @@ def main(args):
     trainer.fit(model, dataset)
 
     # save the model
-    torch.save(model.backbone.state_dict(), f"tsim_{args.name}_backbone.pth")
-    torch.save(model.projection_head.state_dict(), f"tsim_{args.name}_head.pth")
+    torch.save(model.backbone.state_dict(), f"tsim_{args.name}_bb.pth")
+    torch.save(model.projection_head.state_dict(), f"tsim_{args.name}_ph.pth")
 
 
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--name", default="selfsupcauchy_resnet18")
+    parser.add_argument("--name", default="selfcauchy")
     parser.add_argument("--batch-size", type=int, default=2048)
-    parser.add_argument("--finetune-epochs", type=int, default=150)
+    parser.add_argument("--finetune-epochs", type=int, default=450)
     parser.add_argument("--old-head-dim", type=int, default=128)
     parser.add_argument("--new-head-dim", type=int, default=2)
     parser.add_argument("--devices", type=int, default=1)

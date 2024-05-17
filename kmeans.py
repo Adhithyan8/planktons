@@ -53,7 +53,7 @@ def main(args):
             )
         plt.axis("off")
         plt.legend()
-        plt.savefig(f"figures/tsimnce_{args.name}.png", dpi=600)
+        plt.savefig(f"figures/tsim_{args.name}.png", dpi=600)
         plt.close()
 
     if args.normalize:

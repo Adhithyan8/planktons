@@ -92,7 +92,7 @@ class LightningTsimnce(L.LightningModule):
             )
             self.backbone.fc = nn.Identity()
             self.backbone.load_state_dict(
-                torch.load(f"model_weights/{name}_backbone.pth")
+                torch.load(f"model_weights/{name}_bb.pth")
             )
             for param in self.backbone.parameters():
                 param.requires_grad_(False)
@@ -103,13 +103,14 @@ class LightningTsimnce(L.LightningModule):
                 nn.Linear(1024, old_head_dim),
             )
             self.projection_head.load_state_dict(
-                torch.load(f"model_weights/{name}_head.pth")
+                torch.load(f"model_weights/{name}_ph.pth")
             )
             self.projection_head[-1] = nn.Linear(1024, new_head_dim)
             for param in self.projection_head.parameters():
                 param.requires_grad_(False)
             for param in self.projection_head[-1].parameters():
                 param.requires_grad_(True)
+
         elif phase == "finetune":
             self.backbone = hub.load(
                 "pytorch/vision:v0.9.0",
@@ -118,9 +119,11 @@ class LightningTsimnce(L.LightningModule):
             )
             self.backbone.fc = nn.Identity()
             self.backbone.load_state_dict(
-                torch.load(f"model_weights/read_{name}_backbone.pth")
+                torch.load(f"model_weights/read_{name}_bb.pth")
             )
             for param in self.backbone.parameters():
+                param.requires_grad_(False)
+            for param in self.backbone.layer4.parameters():
                 param.requires_grad_(True)
 
             self.projection_head = nn.Sequential(
@@ -129,7 +132,7 @@ class LightningTsimnce(L.LightningModule):
                 nn.Linear(1024, new_head_dim),
             )
             self.projection_head.load_state_dict(
-                torch.load(f"model_weights/read_{name}_head.pth")
+                torch.load(f"model_weights/read_{name}_ph.pth")
             )
             for param in self.projection_head.parameters():
                 param.requires_grad_(True)
@@ -165,7 +168,7 @@ class LightningTsimnce(L.LightningModule):
                 max_lr=0.12,
                 total_steps=self.epochs,
                 epochs=self.epochs,
-                pct_start=0.02,
+                pct_start=0.05,
                 div_factor=1e4,
                 final_div_factor=1e4,
             )
