@@ -122,7 +122,7 @@ class LightningTsimnce(L.LightningModule):
                 torch.load(f"model_weights/read_{name}_bb.pth")
             )
             for param in self.backbone.parameters():
-                param.requires_grad_(False)
+                param.requires_grad_(True)  # finetuning all layers
             for param in self.backbone.layer4.parameters():
                 param.requires_grad_(True)
 
