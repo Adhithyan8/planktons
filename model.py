@@ -11,6 +11,7 @@ class LightningContrastive(L.LightningModule):
         loss: nn.Module,
         n_epochs: int,
         use_head: bool = False,
+        uuid: bool = False,
     ):
         super().__init__()
         self.backbone = hub.load(
@@ -36,6 +37,7 @@ class LightningContrastive(L.LightningModule):
         self.loss = loss
         self.epochs = n_epochs
         self.use_head = use_head
+        self.uuid = uuid
 
     def forward(self, x):
         x = self.backbone(x)
@@ -52,12 +54,18 @@ class LightningContrastive(L.LightningModule):
         return loss
 
     def predict_step(self, batch, batch_idx):
-        x, id = batch
+        if self.uuid:
+            x, id, fname = batch
+        else:
+            x, id = batch
         if self.use_head:
             out = self(x)
         else:
             out = self.backbone(x)
-        return out, id
+        if self.uuid:
+            return out, id, fname
+        else:
+            return out, id
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), weight_decay=5e-4)
@@ -82,6 +90,7 @@ class LightningTsimnce(L.LightningModule):
         loss: nn.Module,
         n_epochs: int,
         phase: str = "readout",
+        uuid: bool = False,
     ):
         super().__init__()
         if phase == "readout":
@@ -140,6 +149,7 @@ class LightningTsimnce(L.LightningModule):
         self.loss = loss
         self.epochs = n_epochs
         self.phase = phase
+        self.uuid = uuid
 
     def forward(self, x):
         x = self.backbone(x)
@@ -156,9 +166,14 @@ class LightningTsimnce(L.LightningModule):
         return loss
 
     def predict_step(self, batch, batch_idx):
-        x, id = batch
-        out = self(x)
-        return out, id
+        if self.uuid:
+            x, id, fname = batch
+            out = self(x)
+            return out, id, fname
+        else:
+            x, id = batch
+            out = self(x)
+            return out, id
 
     def configure_optimizers(self):
         if self.phase == "readout":

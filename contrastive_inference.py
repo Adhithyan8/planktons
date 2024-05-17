@@ -18,6 +18,7 @@ def main(args):
         loss=None,
         n_epochs=0,
         use_head=args.head,
+        uuid=args.uuid,
     )
     model.backbone.load_state_dict(
         torch.load(f"model_weights/{args.name}_bb.pth")
@@ -33,6 +34,7 @@ def main(args):
         Padding.REFLECT,
         ignore_mix=True,
         mask=False,
+        uuid=args.uuid,
     )
     tst_data = make_data(
         [
@@ -41,18 +43,21 @@ def main(args):
         Padding.REFLECT,
         ignore_mix=True,
         mask=False,
+        uuid=args.uuid,
     )
     trn_dataset = PlanktonDataModule(
         trn_data,
         CONTRASTIVE_TRANSFORM,
         INFERENCE_TRANSFORM,
         batch_size=args.batch_size,
+        uuid=args.uuid,
     )
     tst_dataset = PlanktonDataModule(
         tst_data,
         CONTRASTIVE_TRANSFORM,
         INFERENCE_TRANSFORM,
         batch_size=args.batch_size,
+        uuid=args.uuid,
     )
 
     trainer = L.Trainer(
@@ -77,6 +82,13 @@ def main(args):
             torch.cat([out[1] for out in out_tst]).cpu().numpy(),
         )
     )
+    if args.uuid:
+        fnames = np.concatenate(
+            [np.array([*out1[2]] + [*out2[2]]) for out1, out2 in zip(out_trn, out_tst)]
+        )
+        np.save(
+            f"embeddings/fnames_{args.name}{'_ph' if args.head else ''}.npy", fnames
+        )
 
     np.save(f"embeddings/output_{args.name}{'_ph' if args.head else ''}.npy", output)
     np.save(f"embeddings/labels_{args.name}{'_ph' if args.head else ''}.npy", labels)
@@ -88,6 +100,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--head-dim", type=int, default=128)
     parser.add_argument("--head", action="store_true")
+    parser.add_argument("--uuid", action="store_true")
     parser.add_argument("--devices", type=int, default=1)
     parser.add_argument("--nodes", type=int, default=1)
     args = parser.parse_args()

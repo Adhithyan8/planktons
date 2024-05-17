@@ -31,6 +31,7 @@ def parse_datamodule(
     labeled: list,
     padding: Padding,
     mask: bool = True,
+    uuid: bool = False,
 ):
     fname, fcontent = data
     id = label2id[fname.split("/")[-2]]
@@ -54,7 +55,10 @@ def parse_datamodule(
             img_array.shape[0],
             border_mode=4,
         )(image=img_array)["image"]
-    return img_array, id
+    if uuid:
+        return img_array, id, fname
+    else:
+        return img_array, id
 
 
 def datapipe_datamodule(
@@ -62,6 +66,7 @@ def datapipe_datamodule(
     padding: Padding,
     ignore_mix: bool = True,
     mask: bool = True,
+    uuid: bool = False,
 ):
     fileopener = FileOpener(paths, mode="b")
     datapipe = fileopener.load_from_zip()
@@ -81,6 +86,7 @@ def datapipe_datamodule(
             labeled=labeled,
             padding=padding,
             mask=mask,
+            uuid=uuid,
         )
     )
     return datapipe
@@ -91,18 +97,25 @@ def make_data(
     padding: Padding,
     ignore_mix: bool = True,
     mask: bool = True,
+    uuid: bool = False,
 ):
     datapipe = datapipe_datamodule(
         paths,
         padding,
         ignore_mix,
         mask,
+        uuid,
     )
     data = dict()
     idx = 0
-    for img, id in datapipe:
-        data[idx] = (img, id)
-        idx += 1
+    if uuid:
+        for img, id, fname in datapipe:
+            data[idx] = (img, id, fname)
+            idx += 1
+    else:         
+        for img, id in datapipe:
+            data[idx] = (img, id)
+            idx += 1
     return data
 
 
@@ -132,17 +145,25 @@ class TestDatasetDataModule(Dataset):
         self,
         data: dict,
         transforms,
+        uuid: bool = False,
     ):
         self.data = data
         self.transforms = transforms
+        self.uuid = uuid
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        img, id = self.data[idx]
-        img = self.transforms(image=img)["image"]
-        img = torch.from_numpy(img).permute(2, 0, 1)
+        if self.uuid:
+            img, id, fname = self.data[idx]
+            img = self.transforms(image=img)["image"]
+            img = torch.from_numpy(img).permute(2, 0, 1)
+            return img, id, fname
+        else:
+            img, id = self.data[idx]
+            img = self.transforms(image=img)["image"]
+            img = torch.from_numpy(img).permute(2, 0, 1)
         return img, id
 
 
@@ -153,12 +174,14 @@ class PlanktonDataModule(L.LightningDataModule):
         train_transforms,
         test_transforms,
         batch_size: int = 2048,
+        uuid: bool = False,
     ):
         super().__init__()
         self.data = data
         self.train_transforms = train_transforms
         self.test_transforms = test_transforms
         self.batch_size = batch_size
+        self.uuid = uuid
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
@@ -170,6 +193,7 @@ class PlanktonDataModule(L.LightningDataModule):
             self.test_dataset = TestDatasetDataModule(
                 self.data,
                 self.test_transforms,
+                self.uuid,
             )
 
     def train_dataloader(self):
