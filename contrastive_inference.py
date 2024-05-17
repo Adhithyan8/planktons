@@ -84,7 +84,10 @@ def main(args):
     )
     if args.uuid:
         fnames = np.concatenate(
-            [np.array([*out1[2]] + [*out2[2]]) for out1, out2 in zip(out_trn, out_tst)]
+            (
+                np.concatenate([np.array([*out[2]]) for out in out_trn]),
+                np.concatenate([np.array([*out[2]]) for out in out_tst]),
+            )
         )
         np.save(
             f"embeddings/fnames_{args.name}{'_ph' if args.head else ''}.npy", fnames
