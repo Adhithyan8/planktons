@@ -20,9 +20,7 @@ def main(args):
         use_head=args.head,
         uuid=args.uuid,
     )
-    model.backbone.load_state_dict(
-        torch.load(f"model_weights/{args.name}_bb.pth")
-    )
+    model.backbone.load_state_dict(torch.load(f"model_weights/{args.name}_bb.pth"))
     model.projection_head.load_state_dict(
         torch.load(f"model_weights/{args.name}_ph.pth")
     )

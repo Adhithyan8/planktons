@@ -65,20 +65,27 @@ def main(args):
     lbl_tst = labels[NUM_TRAIN:]
 
     kmeans = KMeans(
-        n_clusters=103,
+        n_clusters=args.k,
         random_state=0,
     ).fit(output)
     prd = kmeans.predict(out_tst)
 
-    # optimal assignment to maximize accuracy
-    cst = np.zeros((103, 103))
-    for i in range(prd.shape[0]):
-        cst[int(prd[i]), int(lbl_tst[i])] += 1
-    r_ind, c_ind = linear_sum_assignment(cst, maximize=True)
+    if args.one2one:
+        # optimal assignment to maximize accuracy
+        cst = np.zeros((args.k, 103))
+        for i in range(prd.shape[0]):
+            cst[int(prd[i]), int(lbl_tst[i])] += 1
+        r_ind, c_ind = linear_sum_assignment(cst, maximize=True)
 
-    opt_prd = np.zeros_like(prd)
-    for i in range(prd.shape[0]):
-        opt_prd[i] = c_ind[int(prd[i])]
+        opt_prd = np.zeros_like(prd)
+        for i in range(prd.shape[0]):
+            opt_prd[i] = c_ind[int(prd[i])]
+    else:
+        # assign cluster to the most frequent label
+        cst = np.zeros((args.k, 103))
+        for i in range(prd.shape[0]):
+            cst[int(prd[i]), int(lbl_tst[i])] += 1
+        opt_prd = np.argmax(cst, axis=1)[prd]
 
     f1 = f1_score(
         lbl_tst,
@@ -88,7 +95,7 @@ def main(args):
     )
     acc = accuracy_score(lbl_tst, opt_prd)
 
-    print(f"{args.name}")
+    print(f"{args.name}, kmeans:{args.k}")
     print(f"Accuracy: {acc:.4f}")
     print(f"Macro F1: {f1:.4f}")
 
@@ -96,8 +103,10 @@ def main(args):
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--name", default="resnet18")
+    parser.add_argument("--k", type=int, default=103)
     parser.add_argument("--viz-large", action="store_true")
     parser.add_argument("--normalize", action="store_true")
+    parser.add_argument("--one2one", action="store_true")
     args = parser.parse_args()
 
     main(args)

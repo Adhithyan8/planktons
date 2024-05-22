@@ -48,8 +48,10 @@ def main(args):
     trainer.fit(model, dataset)
 
     # save the model
-    torch.save(model.backbone.state_dict(), f"read_{args.name}_bb.pth")
-    torch.save(model.projection_head.state_dict(), f"read_{args.name}_ph.pth")
+    torch.save(model.backbone.state_dict(), f"model_weights/read_{args.name}_bb.pth")
+    torch.save(
+        model.projection_head.state_dict(), f"model_weights/read_{args.name}_ph.pth"
+    )
 
 
 if __name__ == "__main__":

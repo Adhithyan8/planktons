@@ -8,7 +8,7 @@
 #SBATCH -e %J_slurm.err
 
 module purge
-module load PyTorch-Lightning/2.2.1-foss-2023a-CUDA-12.1.1
-module load PyTorch-bundle/2.1.2-foss-2023a-CUDA-12.1.1
+module load scikit-learn/1.3.1-gfbf-2023a
+module load matplotlib/3.7.2-gfbf-2023a
 source myvenv/bin/activate
-srun python contrastive_inference.py --name tsim_L_selfcauchy --head-dim 2 --head --uuid
+python hdbscan.py --name tsim_L_selfcauchy_ph --viz
