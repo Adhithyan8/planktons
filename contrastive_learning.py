@@ -5,7 +5,7 @@ import pytorch_lightning as L
 import torch
 
 from data import Padding, PlanktonDataModule, make_data
-from losses import InfoNCECauchySelfSupervised
+from losses import InfoNCECosineSemiSupervised
 from model import LightningContrastive
 from transforms import CONTRASTIVE_TRANSFORM, INFERENCE_TRANSFORM
 
@@ -16,7 +16,7 @@ def main(args):
     model = LightningContrastive(
         head_dim=args.head_dim,
         pretrained=args.pretrained,
-        loss=InfoNCECauchySelfSupervised(),
+        loss=InfoNCECosineSemiSupervised(),
         n_epochs=args.epochs,
     )
 

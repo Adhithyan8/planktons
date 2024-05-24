@@ -10,7 +10,4 @@ module purge
 module load scikit-learn/1.3.1-gfbf-2023a
 module load matplotlib/3.7.2-gfbf-2023a
 source myvenv/bin/activate
-for k in 1 3 5 7 9
-do
-    python knn.py --name tsim_selfcauchyrnd_ph --metric euclidean --knn-neighbors $k
-done
+python hdbscan.py --name tsim_L_semicauchy_ph --viz --one2one
