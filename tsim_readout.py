@@ -5,7 +5,7 @@ import pytorch_lightning as L
 import torch
 
 from data import Padding, PlanktonDataModule, make_data
-from losses import InfoNCECauchySelfSupervised
+from losses import CombinedLoss, InfoNCECauchySelfSupervised, InfoNCECauchySupervised
 from model import LightningTsimnce
 from transforms import CONTRASTIVE_TRANSFORM, INFERENCE_TRANSFORM
 
@@ -13,11 +13,14 @@ torch.set_float32_matmul_precision("high")
 
 
 def main(args):
+    loss1 = InfoNCECauchySelfSupervised()
+    loss2 = InfoNCECauchySupervised()
+
     model = LightningTsimnce(
         name=args.name,
         old_head_dim=args.old_head_dim,
         new_head_dim=args.new_head_dim,
-        loss=InfoNCECauchySelfSupervised(),
+        loss=CombinedLoss(loss1, loss2, 0.35),
         n_epochs=args.readout_epochs,
         phase="readout",
     )

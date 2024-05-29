@@ -389,3 +389,16 @@ class InfoNCECauchySemiSupervised(torch.nn.Module):
 
         loss = -(pos - neg)
         return loss
+
+
+class CombinedLoss(torch.nn.Module):
+    def __init__(self, loss1, loss2, lambda_=1.0):
+        super(CombinedLoss, self).__init__()
+        self.loss1 = loss1
+        self.loss2 = loss2
+        self.lambda_ = lambda_
+
+    def forward(self, features, labels):
+        return (1 - self.lambda_) * self.loss1(
+            features, labels
+        ) + self.lambda_ * self.loss2(features, labels)
