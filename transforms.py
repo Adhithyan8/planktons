@@ -12,7 +12,7 @@ CONTRASTIVE_TRANSFORM = A.Compose(
             ],
         ),
         A.ToRGB(),
-        # A.Normalize(),
+        A.Normalize(),
     ]
 )
 
@@ -20,14 +20,30 @@ INFERENCE_TRANSFORM = A.Compose(
     [
         A.Resize(256, 256),  # inference is at higher res
         A.ToRGB(),
-        # A.Normalize(),
+        A.Normalize(),
     ]
 )
 
 INFER_VIT_TRANSFORM = A.Compose(
     [
-        A.Resize(252, 252),  # inference is at higher res
-        A.ToRGB(),
-        # A.Normalize(),
+        A.Resize(252, 252),
+        A.Normalize(),
+    ]
+)
+
+CUB_CONTRASTIVE = A.Compose(
+    [
+        A.ShiftScaleRotate(p=0.5),
+        A.RandomResizedCrop(128, 128, scale=(0.2, 1.0)),
+        A.Flip(p=0.5),
+        A.ColorJitter(p=0.5),
+        A.Normalize(),
+    ]
+)
+
+CUB_INFERENCE = A.Compose(
+    [
+        A.Resize(256, 256),
+        A.Normalize(),
     ]
 )

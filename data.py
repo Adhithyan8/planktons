@@ -226,7 +226,9 @@ class CUBDataset(Dataset):
                 line.split(" ")[1].strip(): int(line.split(" ")[0]) for line in f
             }
         with open(f"{path}/images.txt") as f:
-            self.images = {int(line.split(" ")[0]): line.split(" ")[1] for line in f}
+            self.images = {
+                int(line.split(" ")[0]): line.split(" ")[1].strip() for line in f
+            }
         with open(f"{path}/image_class_labels.txt") as f:
             self.labels = {
                 int(line.split(" ")[0]): int(line.split(" ")[1]) for line in f
@@ -252,6 +254,11 @@ class CUBDataset(Dataset):
             img_array = np.array(img)
         if img_array.shape[0] > 256 or img_array.shape[1] > 256:
             img_array = A.LongestMaxSize(max_size=256)(image=img_array)["image"]
+        img_array = A.PadIfNeeded(
+            img_array.shape[1],
+            img_array.shape[0],
+            border_mode=4,
+        )(image=img_array)["image"]
         img_array = self.transforms(image=img_array)["image"]
         img_array = torch.from_numpy(img_array).permute(2, 0, 1)
         if self.uuid:
