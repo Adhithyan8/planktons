@@ -12,7 +12,7 @@ CONTRASTIVE_TRANSFORM = A.Compose(
             ],
         ),
         A.ToRGB(),
-        A.Normalize(),
+        # A.Normalize(),
     ]
 )
 
@@ -20,7 +20,7 @@ INFERENCE_TRANSFORM = A.Compose(
     [
         A.Resize(256, 256),  # inference is at higher res
         A.ToRGB(),
-        A.Normalize(),
+        # A.Normalize(),
     ]
 )
 
@@ -28,6 +28,6 @@ INFER_VIT_TRANSFORM = A.Compose(
     [
         A.Resize(252, 252),  # inference is at higher res
         A.ToRGB(),
-        A.Normalize(),
+        # A.Normalize(),
     ]
 )

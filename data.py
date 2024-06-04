@@ -112,7 +112,7 @@ def make_data(
         for img, id, fname in datapipe:
             data[idx] = (img, id, fname)
             idx += 1
-    else:         
+    else:
         for img, id in datapipe:
             data[idx] = (img, id)
             idx += 1
@@ -194,6 +194,102 @@ class PlanktonDataModule(L.LightningDataModule):
                 self.data,
                 self.test_transforms,
                 self.uuid,
+            )
+
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=16,
+            persistent_workers=True,
+        )
+
+    def predict_dataloader(self):
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=16,
+            persistent_workers=True,
+        )
+
+
+class CUBDataset(Dataset):
+    def __init__(self, path: str, transforms, uuid: bool = False, split: str = "train"):
+        self.path = path
+        self.transforms = transforms
+        self.uuid = uuid
+        self.split = split
+        with open(f"{path}/classes.txt") as f:
+            self.label2id = {
+                line.split(" ")[1].strip(): int(line.split(" ")[0]) for line in f
+            }
+        with open(f"{path}/images.txt") as f:
+            self.images = {int(line.split(" ")[0]): line.split(" ")[1] for line in f}
+        with open(f"{path}/image_class_labels.txt") as f:
+            self.labels = {
+                int(line.split(" ")[0]): int(line.split(" ")[1]) for line in f
+            }
+        with open(f"{path}/train_test_split.txt") as f:
+            self.labeled = np.array([int(line.split(" ")[1]) for line in f])
+
+    def __len__(self):
+        if self.split == "train":
+            return len(self.labeled[self.labeled == 1])
+        else:
+            return len(self.labeled[self.labeled == 0])
+
+    def __getitem__(self, idx):
+        if self.split == "train":
+            idx = np.where(self.labeled == 1)[0][idx]
+        else:
+            idx = np.where(self.labeled == 0)[0][idx]
+
+        image = self.images[idx + 1]
+        label = self.labels[idx + 1]
+        with Image.open(f"{self.path}/images/{image}") as img:
+            img_array = np.array(img)
+        if img_array.shape[0] > 256 or img_array.shape[1] > 256:
+            img_array = A.LongestMaxSize(max_size=256)(image=img_array)["image"]
+        img_array = self.transforms(image=img_array)["image"]
+        img_array = torch.from_numpy(img_array).permute(2, 0, 1)
+        if self.uuid:
+            return img_array, label, image
+        else:
+            return img_array, label
+
+
+class CUBDataModule(L.LightningDataModule):
+    def __init__(
+        self,
+        path: str,
+        train_transforms,
+        test_transforms,
+        batch_size: int = 2048,
+        uuid: bool = False,
+    ):
+        super().__init__()
+        self.path = path
+        self.train_transforms = train_transforms
+        self.test_transforms = test_transforms
+        self.batch_size = batch_size
+        self.uuid = uuid
+
+    def setup(self, stage=None):
+        if stage == "fit" or stage is None:
+            self.train_dataset = CUBDataset(
+                self.path,
+                self.train_transforms,
+                self.uuid,
+                split="train",
+            )
+        if stage == "predict" or stage is None:
+            self.test_dataset = CUBDataset(
+                self.path,
+                self.test_transforms,
+                self.uuid,
+                split="test",
             )
 
     def train_dataloader(self):
