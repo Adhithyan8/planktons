@@ -13,13 +13,10 @@ torch.set_float32_matmul_precision("high")
 
 
 def main(args):
-    loss1 = InfoNCECauchySelfSupervised()
-    loss2 = InfoNCECauchySupervised()
-
     model = LightningContrastive(
         head_dim=args.head_dim,
         pretrained=args.pretrained,
-        loss=CombinedLoss(loss1, loss2, 0.35),
+        loss=InfoNCECauchySelfSupervised(),
         n_epochs=args.epochs,
     )
 

@@ -54,8 +54,8 @@ fig.update_layout(
     xaxis=dict(visible=False),
     yaxis=dict(visible=False),
     autosize=False,
-    height=900,
-    width=1800,
+    height=600,
+    width=1500,
 )
 
 app = Dash(__name__)

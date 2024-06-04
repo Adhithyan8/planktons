@@ -1,6 +1,7 @@
 .vscode/
 __pycache__/
 planktons_dataset/
+phytoplankton_Utö_2021_labeled
 lightning_logs/
 embeddings/
 *.err

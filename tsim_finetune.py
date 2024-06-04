@@ -13,14 +13,11 @@ torch.set_float32_matmul_precision("high")
 
 
 def main(args):
-    loss1 = InfoNCECauchySelfSupervised()
-    loss2 = InfoNCECauchySupervised()
-
     model = LightningTsimnce(
         name=args.name,
         old_head_dim=args.old_head_dim,
         new_head_dim=args.new_head_dim,
-        loss=CombinedLoss(loss1, loss2, 0.35),
+        loss=InfoNCECauchySelfSupervised(),
         n_epochs=args.finetune_epochs,
         phase="finetune",
     )
