@@ -4,10 +4,15 @@ from time import time
 import pytorch_lightning as L
 import torch
 
-from data import Padding, PlanktonDataModule, make_data
-from losses import CombinedLoss, InfoNCECauchySelfSupervised, InfoNCECauchySupervised
+from data import CUBDataModule, Padding, PlanktonDataModule, make_data
+from losses import InfoNCECauchySelfSupervised
 from model import LightningTsimnce
-from transforms import CONTRASTIVE_TRANSFORM, INFERENCE_TRANSFORM
+from transforms import (
+    CONTRASTIVE_TRANSFORM,
+    CUB_CONTRASTIVE,
+    CUB_INFERENCE,
+    INFERENCE_TRANSFORM,
+)
 
 torch.set_float32_matmul_precision("high")
 
@@ -21,22 +26,31 @@ def main(args):
         n_epochs=args.readout_epochs,
         phase="readout",
     )
+    if args.data == "whoi_plankton":
+        data = make_data(
+            [
+                "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
+                "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
+            ],
+            Padding.REFLECT,
+            ignore_mix=True,
+        )
 
-    data = make_data(
-        [
-            "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
-            "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
-        ],
-        Padding.REFLECT,
-        ignore_mix=True,
-    )
-
-    dataset = PlanktonDataModule(
-        data,
-        CONTRASTIVE_TRANSFORM,
-        INFERENCE_TRANSFORM,
-        batch_size=args.batch_size,
-    )
+        dataset = PlanktonDataModule(
+            data,
+            CONTRASTIVE_TRANSFORM,
+            INFERENCE_TRANSFORM,
+            batch_size=args.batch_size,
+        )
+    elif args.data == "cub":
+        dataset = CUBDataModule(
+            "/mimer/NOBACKUP/groups/naiss2023-5-75/CUB/CUB_200_2011",
+            CUB_CONTRASTIVE,
+            CUB_INFERENCE,
+            batch_size=args.batch_size,
+        )
+    else:
+        raise ValueError("Invalid dataset")
 
     trainer = L.Trainer(
         max_epochs=args.readout_epochs,
@@ -57,6 +71,7 @@ def main(args):
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--name", default="selfcauchy")
+    parser.add_argument("--data", default="whoi_plankton")
     parser.add_argument("--batch-size", type=int, default=2048)
     parser.add_argument("--readout-epochs", type=int, default=50)
     parser.add_argument("--old-head-dim", type=int, default=128)

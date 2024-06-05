@@ -216,11 +216,19 @@ class PlanktonDataModule(L.LightningDataModule):
 
 
 class CUBDataset(Dataset):
-    def __init__(self, path: str, transforms, uuid: bool = False, split: str = "train"):
+    def __init__(
+        self,
+        path: str,
+        transforms,
+        uuid: bool = False,
+        split: str = "train",
+        mode: str = "train",
+    ):
         self.path = path
         self.transforms = transforms
         self.uuid = uuid
         self.split = split
+        self.mode = mode
         with open(f"{path}/classes.txt") as f:
             self.label2id = {
                 line.split(" ")[1].strip(): int(line.split(" ")[0]) for line in f
@@ -239,14 +247,18 @@ class CUBDataset(Dataset):
     def __len__(self):
         if self.split == "train":
             return len(self.labeled[self.labeled == 1])
-        else:
+        elif self.split == "test":
             return len(self.labeled[self.labeled == 0])
+        else:
+            return len(self.labeled)
 
     def __getitem__(self, idx):
         if self.split == "train":
             idx = np.where(self.labeled == 1)[0][idx]
-        else:
+        elif self.split == "test":
             idx = np.where(self.labeled == 0)[0][idx]
+        else:
+            idx = idx
 
         image = self.images[idx + 1]
         label = self.labels[idx + 1]
@@ -259,12 +271,19 @@ class CUBDataset(Dataset):
             img_array.shape[0],
             border_mode=4,
         )(image=img_array)["image"]
-        img_array = self.transforms(image=img_array)["image"]
-        img_array = torch.from_numpy(img_array).permute(2, 0, 1)
-        if self.uuid:
-            return img_array, label, image
+        if self.mode == "train":
+            img_array1 = self.transforms(image=img_array)["image"]
+            img_array2 = self.transforms(image=img_array)["image"]
+            img_array1 = torch.from_numpy(img_array1).permute(2, 0, 1)
+            img_array2 = torch.from_numpy(img_array2).permute(2, 0, 1)
+            return img_array1, img_array2, label
         else:
-            return img_array, label
+            img_array = self.transforms(image=img_array)["image"]
+            img_array = torch.from_numpy(img_array).permute(2, 0, 1)
+            if self.uuid:
+                return img_array, label, image
+            else:
+                return img_array, label
 
 
 class CUBDataModule(L.LightningDataModule):
@@ -289,14 +308,16 @@ class CUBDataModule(L.LightningDataModule):
                 self.path,
                 self.train_transforms,
                 self.uuid,
-                split="train",
+                split="all",
+                mode="train",
             )
         if stage == "predict" or stage is None:
             self.test_dataset = CUBDataset(
                 self.path,
                 self.test_transforms,
                 self.uuid,
-                split="test",
+                split="all",
+                mode="test",
             )
 
     def train_dataloader(self):

@@ -11,6 +11,6 @@ module purge
 module load PyTorch-Lightning/2.2.1-foss-2023a-CUDA-12.1.1
 module load PyTorch-bundle/2.1.2-foss-2023a-CUDA-12.1.1
 source myvenv/bin/activate
-srun python contrastive_learning.py --name selfcauchySGD --epochs 1000 --pretrained --devices 4
-srun python tsim_readout.py --name selfcauchySGD --devices 4
-srun python tsim_finetune.py --name selfcauchySGD --devices 4
+srun python contrastive_learning.py --name selfcauchyCUB --data cub --epochs 1000 --pretrained --devices 4
+srun python tsim_readout.py --name selfcauchyCUB --data cub --devices 4
+srun python tsim_finetune.py --name selfcauchyCUB --data cub --devices 4
