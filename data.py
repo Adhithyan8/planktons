@@ -74,9 +74,9 @@ def datapipe_datamodule(
     datapipe = datapipe.shuffle()
     datapipe = datapipe.sharding_filter()
 
-    with open("label2id.json") as f:
+    with open("label2id_whoi.json") as f:
         label2id = json.load(f)
-    with open("labeled_classes.json") as f:
+    with open("labeled_classes_whoi.json") as f:
         labeled = json.load(f)
 
     datapipe = datapipe.map(

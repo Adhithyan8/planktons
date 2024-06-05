@@ -68,7 +68,7 @@ class LightningContrastive(L.LightningModule):
             return out, id
 
     def configure_optimizers(self):
-        optimizer = optim.SGD(self.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
+        optimizer = optim.AdamW(self.parameters(), lr=0.1, weight_decay=5e-4)
         scheduler = optim.lr_scheduler.OneCycleLR(
             optimizer,
             max_lr=0.12,
@@ -177,7 +177,7 @@ class LightningTsimnce(L.LightningModule):
 
     def configure_optimizers(self):
         if self.phase == "readout":
-            optimizer = optim.SGD(self.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
+            optimizer = optim.AdamW(self.parameters(), lr=0.1, weight_decay=5e-4)
             scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer,
                 max_lr=0.12,
@@ -189,7 +189,7 @@ class LightningTsimnce(L.LightningModule):
             )
             return [optimizer], [scheduler]
         elif self.phase == "finetune":
-            optimizer = optim.SGD(self.parameters(), lr=0.00012, momentum=0.9, weight_decay=5e-4)
+            optimizer = optim.AdamW(self.parameters(), lr=0.00012, weight_decay=5e-4)
             return optimizer
 
 
