@@ -4,9 +4,14 @@ import numpy as np
 import pytorch_lightning as L
 import torch
 
-from data import Padding, PlanktonDataModule, make_data
+from data import CUBDataModule, Padding, PlanktonDataModule, make_data
 from model import LightningContrastive
-from transforms import CONTRASTIVE_TRANSFORM, INFERENCE_TRANSFORM
+from transforms import (
+    CONTRASTIVE_TRANSFORM,
+    CUB_CONTRASTIVE,
+    CUB_INFERENCE,
+    INFERENCE_TRANSFORM,
+)
 
 torch.set_float32_matmul_precision("high")
 
@@ -25,38 +30,56 @@ def main(args):
         torch.load(f"model_weights/{args.name}_ph.pth")
     )
 
-    trn_data = make_data(
-        [
-            "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
-        ],
-        Padding.REFLECT,
-        ignore_mix=True,
-        mask=False,
-        uuid=args.uuid,
-    )
-    tst_data = make_data(
-        [
-            "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
-        ],
-        Padding.REFLECT,
-        ignore_mix=True,
-        mask=False,
-        uuid=args.uuid,
-    )
-    trn_dataset = PlanktonDataModule(
-        trn_data,
-        CONTRASTIVE_TRANSFORM,
-        INFERENCE_TRANSFORM,
-        batch_size=args.batch_size,
-        uuid=args.uuid,
-    )
-    tst_dataset = PlanktonDataModule(
-        tst_data,
-        CONTRASTIVE_TRANSFORM,
-        INFERENCE_TRANSFORM,
-        batch_size=args.batch_size,
-        uuid=args.uuid,
-    )
+    if args.data == "whoi_plankton":
+        trn_data = make_data(
+            [
+                "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2013.zip",
+            ],
+            Padding.REFLECT,
+            ignore_mix=True,
+            mask=False,
+            uuid=args.uuid,
+        )
+        tst_data = make_data(
+            [
+                "/mimer/NOBACKUP/groups/naiss2023-5-75/WHOI_Planktons/2014.zip",
+            ],
+            Padding.REFLECT,
+            ignore_mix=True,
+            mask=False,
+            uuid=args.uuid,
+        )
+        trn_dataset = PlanktonDataModule(
+            trn_data,
+            CONTRASTIVE_TRANSFORM,
+            INFERENCE_TRANSFORM,
+            batch_size=args.batch_size,
+            uuid=args.uuid,
+        )
+        tst_dataset = PlanktonDataModule(
+            tst_data,
+            CONTRASTIVE_TRANSFORM,
+            INFERENCE_TRANSFORM,
+            batch_size=args.batch_size,
+            uuid=args.uuid,
+        )
+    elif args.data == "cub":
+        trn_dataset = CUBDataModule(
+            "/mimer/NOBACKUP/groups/naiss2023-5-75/CUB/CUB_200_2011",
+            CUB_CONTRASTIVE,
+            CUB_INFERENCE,
+            batch_size=args.batch_size,
+            uuid=args.uuid,
+            split="train",
+        )
+        tst_dataset = CUBDataModule(
+            "/mimer/NOBACKUP/groups/naiss2023-5-75/CUB/CUB_200_2011",
+            CUB_CONTRASTIVE,
+            CUB_INFERENCE,
+            batch_size=args.batch_size,
+            uuid=args.uuid,
+            split="test",
+        )
 
     trainer = L.Trainer(
         accelerator="gpu",
@@ -98,6 +121,7 @@ def main(args):
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--name", default="resnet18")
+    parser.add_argument("--data", default="whoi_plankton")
     parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--head-dim", type=int, default=128)
     parser.add_argument("--head", action="store_true")

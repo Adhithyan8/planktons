@@ -33,10 +33,9 @@ INFER_VIT_TRANSFORM = A.Compose(
 
 CUB_CONTRASTIVE = A.Compose(
     [
-        A.ShiftScaleRotate(p=0.5),
-        A.RandomResizedCrop(128, 128, scale=(0.2, 1.0)),
-        A.Flip(p=0.5),
-        A.ColorJitter(p=0.5),
+        A.RandomResizedCrop(224, 224, scale=(0.2, 1.0)),
+        A.HorizontalFlip(p=0.5),
+        A.ColorJitter(),
         A.Normalize(),
     ]
 )
@@ -44,6 +43,7 @@ CUB_CONTRASTIVE = A.Compose(
 CUB_INFERENCE = A.Compose(
     [
         A.Resize(256, 256),
+        A.CenterCrop(224, 224),
         A.Normalize(),
     ]
 )

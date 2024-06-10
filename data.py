@@ -271,6 +271,8 @@ class CUBDataset(Dataset):
             img_array.shape[0],
             border_mode=4,
         )(image=img_array)["image"]
+        if len(img_array.shape) == 2:
+            img_array = A.ToRGB()(image=img_array)["image"]
         if self.mode == "train":
             img_array1 = self.transforms(image=img_array)["image"]
             img_array2 = self.transforms(image=img_array)["image"]
@@ -294,6 +296,7 @@ class CUBDataModule(L.LightningDataModule):
         test_transforms,
         batch_size: int = 2048,
         uuid: bool = False,
+        split: str = "all",
     ):
         super().__init__()
         self.path = path
@@ -301,6 +304,7 @@ class CUBDataModule(L.LightningDataModule):
         self.test_transforms = test_transforms
         self.batch_size = batch_size
         self.uuid = uuid
+        self.split = split
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:
@@ -308,7 +312,7 @@ class CUBDataModule(L.LightningDataModule):
                 self.path,
                 self.train_transforms,
                 self.uuid,
-                split="all",
+                self.split,
                 mode="train",
             )
         if stage == "predict" or stage is None:
@@ -316,7 +320,7 @@ class CUBDataModule(L.LightningDataModule):
                 self.path,
                 self.test_transforms,
                 self.uuid,
-                split="all",
+                self.split,
                 mode="test",
             )
 

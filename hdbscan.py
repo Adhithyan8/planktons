@@ -14,16 +14,20 @@ def main(args):
     output = np.load(f"embeddings/output_{args.name}.npy")
     labels = np.load(f"embeddings/labels_{args.name}.npy")
 
-    """
-    Dataset sizes:
-    2013: 421238
-    2013: 115951 (ignore mix)
-    2014: 329832
-    2014: 63676 (ignore mix)
-    """
-    # magic numbers
-    NUM_TRAIN = 115951
-    NUM_TEST = 63676
+    if args.data == "whoi_plankton":
+        """
+        Dataset sizes:
+        2013: 421238
+        2013: 115951 (ignore mix)
+        2014: 329832
+        2014: 63676 (ignore mix)
+        """
+        # magic numbers
+        NUM_TRAIN = 115951
+        NUM_TEST = 63676
+    elif args.data == "cub":
+        NUM_TRAIN = 5994
+        NUM_TEST = 5794
 
     out_trn = output[:NUM_TRAIN]
     out_tst = output[NUM_TRAIN:]
@@ -31,7 +35,7 @@ def main(args):
     lbl_tst = labels[NUM_TRAIN:]
 
     # clustering
-    model = HDBSCAN(min_cluster_size=50, min_samples=10)
+    model = HDBSCAN(min_cluster_size=10, min_samples=10)
     prd = model.fit_predict(out_tst)
 
     # shift labels by 1 to avoid -1
@@ -64,9 +68,14 @@ def main(args):
         plt.savefig(f"figures/hdbscan_{args.name}.png", dpi=600)
         plt.close()
 
+    if args.data == "whoi_plankton":
+        num_classes = 103
+    elif args.data == "cub":
+        num_classes = 200
+
     if args.one2one:
         # optimal assignment to maximize accuracy
-        cst = np.zeros((len(np.unique(prd)), 103))
+        cst = np.zeros((len(np.unique(prd)), num_classes))
         for i in range(prd.shape[0]):
             cst[int(prd[i]), int(lbl_tst[i])] += 1
         r_ind, c_ind = linear_sum_assignment(cst, maximize=True)
@@ -76,7 +85,7 @@ def main(args):
             opt_prd[i] = c_ind[int(prd[i])]
     else:
         # assign cluster to the most frequent label
-        cst = np.zeros((len(np.unique(prd)), 103))
+        cst = np.zeros((len(np.unique(prd)), num_classes))
         for i in range(prd.shape[0]):
             cst[int(prd[i]), int(lbl_tst[i])] += 1
         opt_prd = np.argmax(cst, axis=1)[prd]
@@ -84,7 +93,7 @@ def main(args):
     f1 = f1_score(
         lbl_tst,
         opt_prd,
-        labels=list(range(103)),
+        labels=list(range(num_classes)),
         average="macro",
     )
     acc = accuracy_score(lbl_tst, opt_prd)
@@ -97,6 +106,7 @@ def main(args):
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--name", default="resnet18")
+    parser.add_argument("--data", default="whoi_plankton")
     parser.add_argument("--viz", action="store_true")
     parser.add_argument("--one2one", action="store_true")
     args = parser.parse_args()
