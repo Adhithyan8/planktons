@@ -243,6 +243,8 @@ class CUBDataset(Dataset):
             }
         with open(f"{path}/train_test_split.txt") as f:
             self.labeled = np.array([int(line.split(" ")[1]) for line in f])
+        with open(f"labeled_classes_cub.json") as f:
+            self.labeled_classes = json.load(f)
 
     def __len__(self):
         if self.split == "train":
@@ -278,7 +280,10 @@ class CUBDataset(Dataset):
             img_array2 = self.transforms(image=img_array)["image"]
             img_array1 = torch.from_numpy(img_array1).permute(2, 0, 1)
             img_array2 = torch.from_numpy(img_array2).permute(2, 0, 1)
-            return img_array1, img_array2, label
+            if self.labeled[idx + 1] == 1 and label in self.labeled_classes:
+                return img_array1, img_array2, label
+            else:
+                return img_array1, img_array2, -1
         else:
             img_array = self.transforms(image=img_array)["image"]
             img_array = torch.from_numpy(img_array).permute(2, 0, 1)
@@ -311,7 +316,7 @@ class CUBDataModule(L.LightningDataModule):
             self.train_dataset = CUBDataset(
                 self.path,
                 self.train_transforms,
-                self.uuid,
+                False,
                 self.split,
                 mode="train",
             )
