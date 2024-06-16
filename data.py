@@ -280,7 +280,7 @@ class CUBDataset(Dataset):
             img_array2 = self.transforms(image=img_array)["image"]
             img_array1 = torch.from_numpy(img_array1).permute(2, 0, 1)
             img_array2 = torch.from_numpy(img_array2).permute(2, 0, 1)
-            if self.labeled[idx + 1] == 1 and label in self.labeled_classes:
+            if self.labeled[idx] == 1 and label in self.labeled_classes:
                 return img_array1, img_array2, label
             else:
                 return img_array1, img_array2, -1

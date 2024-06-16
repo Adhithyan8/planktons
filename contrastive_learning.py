@@ -5,7 +5,12 @@ import pytorch_lightning as L
 import torch
 
 from data import CUBDataModule, Padding, PlanktonDataModule, make_data
-from losses import InfoNCECosineSelfSupervised, InfoNCECosineSupervised, CombinedLoss
+from losses import (
+    CombinedLoss,
+    InfoNCECosineSelfSupervised,
+    InfoNCECosineSemiSupervised,
+    InfoNCECosineSupervised,
+)
 from model import LightningContrastive
 from transforms import (
     CONTRASTIVE_TRANSFORM,
@@ -26,6 +31,7 @@ def main(args):
         pretrained=args.pretrained,
         loss=CombinedLoss(loss1, loss2, 0.35),
         n_epochs=args.epochs,
+        arch="vit",
     )
 
     if args.data == "whoi_plankton":

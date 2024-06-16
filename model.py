@@ -12,28 +12,47 @@ class LightningContrastive(L.LightningModule):
         n_epochs: int,
         use_head: bool = False,
         uuid: bool = False,
+        arch: str = "resnet",
     ):
         super().__init__()
-        self.backbone = hub.load(
-            "pytorch/vision:v0.9.0",
-            "resnet18",
-            pretrained=pretrained,
-        )
-        self.backbone.fc = nn.Identity()
-        if pretrained:
+        if arch == "resnet":
+            self.backbone = hub.load(
+                "pytorch/vision:v0.9.0",
+                "resnet18",
+                pretrained=pretrained,
+            )
+            self.backbone.fc = nn.Identity()
+            if pretrained:
+                for param in self.backbone.parameters():
+                    param.requires_grad_(True)
+                for param in self.backbone.layer4.parameters():
+                    param.requires_grad_(True)
+            else:
+                for param in self.backbone.parameters():
+                    param.requires_grad_(True)
+
+            self.projection_head = nn.Sequential(
+                nn.Linear(512, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, head_dim),
+            )
+        elif arch == "vit":
+            self.backbone = hub.load(
+                "facebookresearch/dinov2",
+                "dinov2_vitb14_reg",
+            )
             for param in self.backbone.parameters():
                 param.requires_grad_(False)
-            for param in self.backbone.layer4.parameters():
-                param.requires_grad_(True)
-        else:
-            for param in self.backbone.parameters():
-                param.requires_grad_(True)
-
-        self.projection_head = nn.Sequential(
-            nn.Linear(512, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, head_dim),
-        )
+            for name, param in self.backbone.named_parameters():
+                if "block" in name:
+                    block_num = int(name.split(".")[1])
+                    if block_num >= 11:
+                        param.requires_grad_(True)
+            self.projection_head = nn.Sequential(
+                nn.Linear(768, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, head_dim),
+            )
         self.loss = loss
         self.epochs = n_epochs
         self.use_head = use_head
@@ -68,15 +87,11 @@ class LightningContrastive(L.LightningModule):
             return out, id
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=0.1, weight_decay=5e-4)
-        scheduler = optim.lr_scheduler.OneCycleLR(
-            optimizer,
-            max_lr=0.12,
-            total_steps=self.epochs,
-            epochs=self.epochs,
-            pct_start=0.02,
-            div_factor=1e4,
-            final_div_factor=1e4,
+        optimizer = optim.SGD(
+            self.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-5
+        )
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=self.epochs, eta_min=0
         )
         return [optimizer], [scheduler]
 
@@ -100,9 +115,7 @@ class LightningTsimnce(L.LightningModule):
                 pretrained=True,
             )
             self.backbone.fc = nn.Identity()
-            self.backbone.load_state_dict(
-                torch.load(f"model_weights/{name}_bb.pth")
-            )
+            self.backbone.load_state_dict(torch.load(f"model_weights/{name}_bb.pth"))
             for param in self.backbone.parameters():
                 param.requires_grad_(False)
 

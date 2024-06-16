@@ -29,6 +29,9 @@ def main(args):
         NUM_TRAIN = 5994
         NUM_TEST = 5794
 
+        # shift labels to start from 0 instead of 1
+        labels -= 1
+
     if args.viz_large:
         large_class_labels = [88, 49, 95, 8, 90, 19, 65, 5, 66, 38]
         large_class_names = [
@@ -81,7 +84,8 @@ def main(args):
 
     if args.one2one:
         # optimal assignment to maximize accuracy
-        cst = np.zeros((args.k, num_classes))
+        D = max(num_classes, args.k)
+        cst = np.zeros((D, D))
         for i in range(prd.shape[0]):
             cst[int(prd[i]), int(lbl_tst[i])] += 1
         r_ind, c_ind = linear_sum_assignment(cst, maximize=True)

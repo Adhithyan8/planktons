@@ -24,6 +24,7 @@ def main(args):
         n_epochs=0,
         use_head=args.head,
         uuid=args.uuid,
+        arch="vit",
     )
     model.backbone.load_state_dict(torch.load(f"model_weights/{args.name}_bb.pth"))
     model.projection_head.load_state_dict(
@@ -122,7 +123,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--name", default="resnet18")
     parser.add_argument("--data", default="whoi_plankton")
-    parser.add_argument("--batch-size", type=int, default=1024)
+    parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--head-dim", type=int, default=128)
     parser.add_argument("--head", action="store_true")
     parser.add_argument("--uuid", action="store_true")
