@@ -50,3 +50,32 @@ CUB_INFERENCE = A.Compose(
         A.Normalize(),
     ]
 )
+
+CUB_MU_STUDENT = A.Compose(
+    [
+        A.Resize(256, 256),
+        A.RandomResizedCrop(224, 224, scale=(0.3, 1.0)),
+        A.HorizontalFlip(p=0.5),
+        A.ColorJitter(),
+        A.Solarize(),
+        A.GaussianBlur(),
+        A.Normalize(),
+    ]
+)
+
+CUB_MU_TEACHER = A.Compose(
+    [
+        A.Resize(256, 256),
+        A.RandomCrop(224, 224),
+        A.HorizontalFlip(p=0.5),
+        A.Normalize(),
+    ]
+)
+
+CUB_MU_INFERENCE = A.Compose(
+    [
+        A.Resize(256, 256),
+        A.CenterCrop(224, 224),
+        A.Normalize(),
+    ]
+)

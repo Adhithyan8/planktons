@@ -402,3 +402,48 @@ class CombinedLoss(torch.nn.Module):
         return (1 - self.lambda_) * self.loss1(
             features, labels
         ) + self.lambda_ * self.loss2(features, labels)
+
+
+class DistillLoss(torch.nn.Module):
+    def __init__(
+        self,
+        warmup_epochs,
+        epochs,
+        intial_teacher_temp=0.07,
+        teacher_temp=0.04,
+        student_temp=0.1,
+    ):
+        super().__init__()
+        self.student_temp = student_temp
+        self.teacher_temp = torch.cat(
+            (
+                torch.linspace(intial_teacher_temp, teacher_temp, warmup_epochs),
+                torch.ones(epochs - warmup_epochs) * teacher_temp,
+            )
+        )
+
+    def forward(self, student_out, teacher_out, epoch, id):
+        student_out /= self.student_temp
+
+        temp = self.teacher_temp[epoch]
+        teacher_out = torch.nn.functional.softmax(teacher_out / temp, dim=-1)
+        teacher_out = teacher_out.detach()
+
+        unsup_loss = torch.mean(
+            -torch.sum(
+                teacher_out * torch.nn.functional.log_softmax(student_out, dim=-1),
+                dim=-1,
+            )
+        )
+
+        l = id[id != -1]
+        student_out_l = student_out[id != -1]
+        sup_loss = torch.nn.functional.cross_entropy(student_out_l, l)
+
+        mean_student_prob = torch.mean(
+            torch.nn.functional.softmax(student_out, dim=-1), dim=0
+        )
+        reg = -torch.sum(mean_student_prob * torch.log(mean_student_prob))
+
+        loss = 0.65 * unsup_loss + 0.35 * sup_loss + 2.0 * reg
+        return loss
