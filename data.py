@@ -366,7 +366,8 @@ class MuCUBDataset(Dataset):
         self.mode = mode
         with open(f"{path}/classes.txt") as f:
             self.label2id = {
-                line.split(" ")[1].strip(): int(line.split(" ")[0]) for line in f
+                line.split(" ")[1].strip(): int(line.split(" ")[0]) - 1
+                for line in f  # 0-indexed id
             }
         with open(f"{path}/images.txt") as f:
             self.images = {
@@ -374,12 +375,16 @@ class MuCUBDataset(Dataset):
             }
         with open(f"{path}/image_class_labels.txt") as f:
             self.labels = {
-                int(line.split(" ")[0]): int(line.split(" ")[1]) for line in f
+                int(line.split(" ")[0]): int(line.split(" ")[1]) - 1
+                for line in f  # 0-indexed id
             }
         with open(f"{path}/train_test_split.txt") as f:
             self.labeled = np.array([int(line.split(" ")[1]) for line in f])
         with open(f"labeled_classes_cub.json") as f:
             self.labeled_classes = json.load(f)
+            self.labeled_classes = [
+                id - 1 for id in self.labeled_classes
+            ]  # 0-indexed id
 
     def __len__(self):
         if self.split == "train":
@@ -411,14 +416,14 @@ class MuCUBDataset(Dataset):
         if len(img_array.shape) == 2:
             img_array = A.ToRGB()(image=img_array)["image"]
         if self.mode == "train":
-            img_array1 = self.transforms_teacher(image=img_array)["image"]
-            img_array2 = self.transforms_student(image=img_array)["image"]
-            img_array1 = torch.from_numpy(img_array1).permute(2, 0, 1)
-            img_array2 = torch.from_numpy(img_array2).permute(2, 0, 1)
+            img_t = self.transforms_teacher(image=img_array)["image"]
+            img_s = self.transforms_student(image=img_array)["image"]
+            img_t = torch.from_numpy(img_t).permute(2, 0, 1)
+            img_s = torch.from_numpy(img_s).permute(2, 0, 1)
             if self.labeled[idx] == 1 and label in self.labeled_classes:
-                return img_array1, img_array2, label
+                return img_t, img_s, label
             else:
-                return img_array1, img_array2, -1
+                return img_t, img_s, -1
         else:
             img_array = self.transforms_teacher(image=img_array)["image"]
             img_array = torch.from_numpy(img_array).permute(2, 0, 1)

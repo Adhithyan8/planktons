@@ -29,9 +29,6 @@ def main(args):
         NUM_TRAIN = 5994
         NUM_TEST = 5794
 
-        # shift labels to start from 0 instead of 1
-        labels -= 1
-
     if args.viz_large:
         large_class_labels = [88, 49, 95, 8, 90, 19, 65, 5, 66, 38]
         large_class_names = [

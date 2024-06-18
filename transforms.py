@@ -34,8 +34,6 @@ INFER_VIT_TRANSFORM = A.Compose(
 CUB_CONTRASTIVE = A.Compose(
     [
         A.Resize(256, 256),
-        # A.ShiftScaleRotate(p=0.5),
-        # A.RandomResizedCrop(224, 224, scale=(0.3, 1.0)),
         A.RandomCrop(224, 224),
         A.HorizontalFlip(p=0.5),
         A.ColorJitter(),
@@ -51,6 +49,15 @@ CUB_INFERENCE = A.Compose(
     ]
 )
 
+CUB_MU_TEACHER = A.Compose(
+    [
+        A.Resize(256, 256),
+        A.RandomCrop(224, 224),
+        A.HorizontalFlip(p=0.5),
+        A.Normalize(),
+    ]
+)
+
 CUB_MU_STUDENT = A.Compose(
     [
         A.Resize(256, 256),
@@ -59,15 +66,6 @@ CUB_MU_STUDENT = A.Compose(
         A.ColorJitter(),
         A.Solarize(),
         A.GaussianBlur(),
-        A.Normalize(),
-    ]
-)
-
-CUB_MU_TEACHER = A.Compose(
-    [
-        A.Resize(256, 256),
-        A.RandomCrop(224, 224),
-        A.HorizontalFlip(p=0.5),
         A.Normalize(),
     ]
 )

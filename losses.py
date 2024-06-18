@@ -407,27 +407,30 @@ class CombinedLoss(torch.nn.Module):
 class DistillLoss(torch.nn.Module):
     def __init__(
         self,
-        warmup_epochs,
+        epochs_warmup,
         epochs,
-        intial_teacher_temp=0.07,
+        teacher_temp_init=0.07,
         teacher_temp=0.04,
         student_temp=0.1,
+        lambda_=0.35,
+        lambda_reg=2.0,
     ):
         super().__init__()
         self.student_temp = student_temp
-        self.teacher_temp = torch.cat(
+        self.teacher_temp_schedule = torch.cat(
             (
-                torch.linspace(intial_teacher_temp, teacher_temp, warmup_epochs),
-                torch.ones(epochs - warmup_epochs) * teacher_temp,
+                torch.linspace(teacher_temp_init, teacher_temp, epochs_warmup),
+                torch.ones(epochs - epochs_warmup) * teacher_temp,
             )
         )
+        self.lambda_ = lambda_
+        self.lambda_reg = lambda_reg
 
-    def forward(self, student_out, teacher_out, epoch, id):
-        student_out /= self.student_temp
-
-        temp = self.teacher_temp[epoch]
-        teacher_out = torch.nn.functional.softmax(teacher_out / temp, dim=-1)
+    def forward(self, teacher_out, student_out, id, epoch):
+        teacher_temp = self.teacher_temp_schedule[epoch]
+        teacher_out = torch.nn.functional.softmax(teacher_out / teacher_temp, dim=-1)
         teacher_out = teacher_out.detach()
+        student_out /= self.student_temp
 
         unsup_loss = torch.mean(
             -torch.sum(
@@ -436,14 +439,23 @@ class DistillLoss(torch.nn.Module):
             )
         )
 
-        l = id[id != -1]
-        student_out_l = student_out[id != -1]
-        sup_loss = torch.nn.functional.cross_entropy(student_out_l, l)
+        label = id[id != -1]
+        student_out_labeled = student_out[id != -1]
+        if len(label) == 0:
+            sup_loss = 0.0
+        else:
+            sup_loss = torch.nn.functional.cross_entropy(student_out_labeled, label)
 
         mean_student_prob = torch.mean(
             torch.nn.functional.softmax(student_out, dim=-1), dim=0
         )
-        reg = -torch.sum(mean_student_prob * torch.log(mean_student_prob))
+        reg = torch.sum(
+            mean_student_prob * torch.log(mean_student_prob)
+        )  # maximize mean entropy
 
-        loss = 0.65 * unsup_loss + 0.35 * sup_loss + 2.0 * reg
+        loss = (
+            (1 - self.lambda_) * unsup_loss
+            + self.lambda_ * sup_loss
+            + self.lambda_reg * reg
+        )
         return loss

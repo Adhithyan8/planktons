@@ -244,27 +244,31 @@ class LightningPretrained(L.LightningModule):
 
 
 class CosineClassifier(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int, freeze_last_layer: int = -1):
+    def __init__(self, in_dim: int, out_dim: int, freeze_layer: int = -1):
         super().__init__()
-        self.last_layer = nn.utils.weight_norm(nn.Linear(in_dim, out_dim, bias=False))
-        self.last_layer.weight_g.data.fill_(1)
-        self.last_layer.weight_g.requires_grad = False
-        self.freeze_last_layer = freeze_last_layer
+        self.layer = nn.utils.parametrizations.weight_norm(
+            nn.Linear(in_dim, out_dim, bias=False)
+        )
+        self.layer.parametrizations.weight.original0.data.fill_(1)  # weight norm to 1
+        self.layer.parametrizations.weight.original0.requires_grad = (
+            False  # freeze weight norm
+        )
+        self.freeze_layer = freeze_layer
 
-    def cancel_last_layer_gradients(self, current_epoch: int):
-        if current_epoch >= self.freeze_last_layer:
+    def cancel_gradients(self, epoch: int):
+        if epoch >= self.freeze_layer:
             return
-        for param in self.last_layer.parameters():
+        for param in self.layer.parameters():
             param.grad = None
 
     def forward(self, x):
         x = nn.functional.normalize(x, p=2, dim=-1)
-        x = self.last_layer(x)
+        x = self.layer(x)
         return x
 
 
 @torch.no_grad()
-def update_momentum(model: nn.Module, model_ema: nn.Module, m: float):
+def update_teacher(model_ema: nn.Module, model: nn.Module, m: float):
     for model_ema, model in zip(model_ema.parameters(), model.parameters()):
         model_ema.data = model_ema.data * m + model.data * (1.0 - m)
 
@@ -284,7 +288,7 @@ class LightningMuContrastive(L.LightningModule):
     def __init__(
         self,
         name: str,
-        classifier_dim: int,
+        out_dim: int,
         loss: nn.Module,
         n_epochs: int,
         uuid: bool = False,
@@ -299,10 +303,7 @@ class LightningMuContrastive(L.LightningModule):
             )
             backbone.fc = nn.Identity()
             backbone.load_state_dict(torch.load(f"model_weights/{name}_bb.pth"))
-            for param in backbone.parameters():
-                param.requires_grad_(True)
-            for param in backbone.layer4.parameters():
-                param.requires_grad_(True)
+            cls_head = CosineClassifier(512, out_dim)
         elif arch == "vit":
             backbone = hub.load(
                 "facebookresearch/dinov2",
@@ -316,58 +317,52 @@ class LightningMuContrastive(L.LightningModule):
                     block_num = int(name.split(".")[1])
                     if block_num >= 11:
                         param.requires_grad_(True)
-        self.student_backbone = backbone
-        self.teacher_backbone = copy.deepcopy(backbone)
-        if arch == "resnet":
-            self.student_head = CosineClassifier(
-                512, classifier_dim, freeze_last_layer=1
-            )
-            self.teacher_head = CosineClassifier(512, classifier_dim)
-        elif arch == "vit":
-            self.student_head = CosineClassifier(
-                768, classifier_dim, freeze_last_layer=1
-            )
-            self.teacher_head = CosineClassifier(768, classifier_dim)
+            cls_head = CosineClassifier(768, out_dim)
+        self.teacher_backbone = backbone
+        self.student_backbone = copy.deepcopy(backbone)
+        self.teacher_head = cls_head
+        self.student_head = copy.deepcopy(cls_head)
+
+        # freeze teacher, update using momentum
         for param in self.teacher_backbone.parameters():
             param.requires_grad_(False)
         for param in self.teacher_head.parameters():
             param.requires_grad_(False)
+
         self.loss = loss
         self.epochs = n_epochs
         self.uuid = uuid
-
-    def forward(self, x):
-        x = self.student_backbone(x)
-        x = self.student_head(x)
-        return x
 
     def forward_teacher(self, x):
         x = self.teacher_backbone(x)
         x = self.teacher_head(x)
         return x
 
+    def forward(self, x):
+        x = self.student_backbone(x)
+        x = self.student_head(x)
+        return x
+
     def training_step(self, batch, batch_idx):
-        momentum = cosine_schedule(
-            self.current_epoch, self.epochs, 0.999, 0.7
-        )
-        update_momentum(self.student_backbone, self.teacher_backbone, momentum)
-        update_momentum(self.student_head, self.teacher_head, momentum)
-        x1, x2, id = batch
-        x_t = self.teacher(x1)
-        x_s = self.student(x2)
-        loss = self.loss(x_s, x_t, self.current_epoch, id)
-        self.log("train_loss", loss, prog_bar=True)
+        m = cosine_schedule(self.current_epoch, self.epochs, 0.999, 0.7)
+        update_teacher(self.teacher_backbone, self.student_backbone, m)
+        update_teacher(self.teacher_head, self.student_head, m)
+
+        x_t, x_s, id = batch
+        x_t = self.forward_teacher(x_t)
+        x_s = self.forward(x_s)
+        loss = self.loss(x_t, x_s, id, self.current_epoch)
         return loss
-    
+
     def on_after_backward(self):
-        self.student_head.cancel_last_layer_gradients(self.current_epoch)
+        self.student_head.cancel_gradients(self.current_epoch)
 
     def predict_step(self, batch, batch_idx):
         if self.uuid:
             x, id, fname = batch
         else:
             x, id = batch
-        out = self.forward_teacher(x)
+        out = self.forward_teacher(x)  # using teacher for inference
         if self.uuid:
             return out, id, fname
         else:
@@ -378,7 +373,7 @@ class LightningMuContrastive(L.LightningModule):
             self.parameters(),
             lr=0.1,
             momentum=0.9,
-            weight_decay=1e-5,
+            weight_decay=1e-3,
         )
         scheduler = optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=self.epochs, eta_min=0
