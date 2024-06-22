@@ -5,12 +5,7 @@ import pytorch_lightning as L
 import torch
 
 from data import CUBDataModule, Padding, PlanktonDataModule, make_data
-from losses import (
-    CombinedLoss,
-    InfoNCECosineSelfSupervised,
-    InfoNCECosineSemiSupervised,
-    InfoNCECosineSupervised,
-)
+from losses import CombinedLoss, InfoNCECosineSelfSupervised, InfoNCECosineSupervised
 from model import LightningContrastive
 from transforms import (
     CONTRASTIVE_TRANSFORM,
@@ -66,6 +61,8 @@ def main(args):
         devices=args.devices,
         num_nodes=args.nodes,
         strategy="ddp",
+        sync_batchnorm=True,
+        use_distributed_sampler=True,
     )
     trainer.fit(model, dataset)
 

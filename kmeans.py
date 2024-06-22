@@ -1,13 +1,9 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from sklearn.cluster import KMeans
 from sklearn.metrics import accuracy_score, f1_score
-
-matplotlib.use("Agg")
 
 
 def main(args):
@@ -29,37 +25,6 @@ def main(args):
         NUM_TRAIN = 5994
         NUM_TEST = 5794
 
-    if args.viz_large:
-        large_class_labels = [88, 49, 95, 8, 90, 19, 65, 5, 66, 38]
-        large_class_names = [
-            "detritus",
-            "Leptocylindrus",
-            "mix_elongated",
-            "Chaetoceros",
-            "dino30",
-            "Cylindrotheca",
-            "Rhizosolenia",
-            "Cerataulina",
-            "Skeletonema",
-            "Guinardia_delicatula",
-        ]
-
-        # plotting
-        plt.figure(figsize=(10, 10))
-        for i, label in enumerate(large_class_labels):
-            plt.scatter(
-                output[labels == label, 0],
-                output[labels == label, 1],
-                c=f"C{i}",
-                s=1.0,
-                alpha=0.5,
-                label=large_class_names[i],
-            )
-        plt.axis("off")
-        plt.legend()
-        plt.savefig(f"figures/tsim_{args.name}.png", dpi=600)
-        plt.close()
-
     if args.normalize:
         output /= np.linalg.norm(output, axis=1, keepdims=True)
 
@@ -79,23 +44,16 @@ def main(args):
     elif args.data == "cub":
         num_classes = 200
 
-    if args.one2one:
-        # optimal assignment to maximize accuracy
-        D = max(num_classes, args.k)
-        cst = np.zeros((D, D))
-        for i in range(prd.shape[0]):
-            cst[int(prd[i]), int(lbl_tst[i])] += 1
-        r_ind, c_ind = linear_sum_assignment(cst, maximize=True)
+    # optimal assignment to maximize accuracy
+    D = max(num_classes, args.k)
+    cst = np.zeros((D, D))
+    for i in range(prd.shape[0]):
+        cst[int(prd[i]), int(lbl_tst[i])] += 1
+    r_ind, c_ind = linear_sum_assignment(cst, maximize=True)
 
-        opt_prd = np.zeros_like(prd)
-        for i in range(prd.shape[0]):
-            opt_prd[i] = c_ind[int(prd[i])]
-    else:
-        # assign cluster to the most frequent label
-        cst = np.zeros((args.k, num_classes))
-        for i in range(prd.shape[0]):
-            cst[int(prd[i]), int(lbl_tst[i])] += 1
-        opt_prd = np.argmax(cst, axis=1)[prd]
+    opt_prd = np.zeros_like(prd)
+    for i in range(prd.shape[0]):
+        opt_prd[i] = c_ind[int(prd[i])]
 
     f1 = f1_score(
         lbl_tst,
@@ -115,9 +73,7 @@ if __name__ == "__main__":
     parser.add_argument("--name", default="resnet18")
     parser.add_argument("--data", default="whoi_plankton")
     parser.add_argument("--k", type=int, default=103)
-    parser.add_argument("--viz-large", action="store_true")
     parser.add_argument("--normalize", action="store_true")
-    parser.add_argument("--one2one", action="store_true")
     args = parser.parse_args()
 
     main(args)

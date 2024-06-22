@@ -446,12 +446,11 @@ class DistillLoss(torch.nn.Module):
         else:
             sup_loss = torch.nn.functional.cross_entropy(student_out_labeled, label)
 
-        mean_student_prob = torch.mean(
-            torch.nn.functional.softmax(student_out, dim=-1), dim=0
-        )
-        reg = torch.sum(
-            mean_student_prob * torch.log(mean_student_prob)
-        )  # maximize mean entropy
+        reg = torch.mean(
+            torch.nn.functional.softmax(student_out, dim=-1)
+            * torch.nn.functional.log_softmax(student_out, dim=-1),
+            dim=0,
+        ).sum()
 
         loss = (
             (1 - self.lambda_) * unsup_loss

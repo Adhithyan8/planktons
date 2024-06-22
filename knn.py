@@ -78,23 +78,6 @@ def main(args):
     print(f"Accuracy: {acc:.4f}")
     print(f"Macro F1: {f1:.4f}")
 
-    if args.viz_boundary:
-        # magic numbers
-        x_min, x_max = output[:, 0].min() - 1, output[:, 0].max() + 1
-        y_min, y_max = output[:, 1].min() - 1, output[:, 1].max() + 1
-        xx, yy = np.meshgrid(
-            np.arange(x_min, x_max, 10),
-            np.arange(y_min, y_max, 10),
-        )
-        Z = knn.predict(np.c_[xx.ravel(), yy.ravel()])
-        Z = Z.reshape(xx.shape)
-
-        plt.figure(figsize=(10, 10))
-        plt.contourf(xx, yy, Z, alpha=0.4, cmap="tab10", vmin=0, vmax=102, levels=103)
-        plt.axis("off")
-        plt.savefig(f"figures/boundary_{args.name}.png", dpi=600)
-        plt.close()
-
 
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
@@ -102,7 +85,6 @@ if __name__ == "__main__":
     parser.add_argument("--tsne", action="store_true")
     parser.add_argument("--metric", default="cosine")
     parser.add_argument("--knn-neighbors", type=int, default=5)
-    parser.add_argument("--viz-boundary", action="store_true")
     args = parser.parse_args()
 
     main(args)

@@ -1,5 +1,7 @@
+import json
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from sklearn.metrics import accuracy_score, f1_score
@@ -10,8 +12,14 @@ def main(args):
     labels = np.load(f"embeddings/labels_{args.name}.npy")
 
     # magic numbers
-    NUM_TRAIN = 5994
-    NUM_TEST = 5794
+    if args.data == "cub":
+        NUM_TRAIN = 5994
+        NUM_TEST = 5794
+        num_classes = 200
+    elif args.data == "whoi_plankton":
+        NUM_TRAIN = 115951
+        NUM_TEST = 63676
+        num_classes = 103
 
     preds = np.argmax(output, axis=1)
     prd_trn = preds[:NUM_TRAIN]
@@ -20,7 +28,6 @@ def main(args):
     lbl_tst = labels[NUM_TRAIN:]
 
     # optimal assignment to maximize accuracy
-    num_classes = 200
     D = max(num_classes, output.shape[1])
     cst = np.zeros((D, D))
     for i in range(prd_tst.shape[0]):
@@ -46,6 +53,7 @@ def main(args):
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--name", default="resnet18")
+    parser.add_argument("--data", default="cub")
     args = parser.parse_args()
 
     main(args)

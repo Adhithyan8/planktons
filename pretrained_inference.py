@@ -6,12 +6,7 @@ import torch
 
 from data import CUBDataModule, Padding, PlanktonDataModule, make_data
 from model import LightningPretrained
-from transforms import (
-    CUB_CONTRASTIVE,
-    CUB_INFERENCE,
-    INFER_VIT_TRANSFORM,
-    INFERENCE_TRANSFORM,
-)
+from transforms import CUB_CONTRASTIVE, CUB_INFERENCE, INFERENCE_TRANSFORM
 
 torch.set_float32_matmul_precision("high")
 
@@ -36,32 +31,18 @@ def main(args):
             ignore_mix=True,
             mask=False,
         )
-        if args.name == "vitb14-dinov2":
-            trn_dataset = PlanktonDataModule(
-                trn_data,
-                INFER_VIT_TRANSFORM,
-                INFER_VIT_TRANSFORM,
-                batch_size=args.batch_size,
-            )
-            tst_dataset = PlanktonDataModule(
-                tst_data,
-                INFER_VIT_TRANSFORM,
-                INFER_VIT_TRANSFORM,
-                batch_size=args.batch_size,
-            )
-        else:
-            trn_dataset = PlanktonDataModule(
-                trn_data,
-                INFERENCE_TRANSFORM,
-                INFERENCE_TRANSFORM,
-                batch_size=args.batch_size,
-            )
-            tst_dataset = PlanktonDataModule(
-                tst_data,
-                INFERENCE_TRANSFORM,
-                INFERENCE_TRANSFORM,
-                batch_size=args.batch_size,
-            )
+        trn_dataset = PlanktonDataModule(
+            trn_data,
+            INFERENCE_TRANSFORM,
+            INFERENCE_TRANSFORM,
+            batch_size=args.batch_size,
+        )
+        tst_dataset = PlanktonDataModule(
+            tst_data,
+            INFERENCE_TRANSFORM,
+            INFERENCE_TRANSFORM,
+            batch_size=args.batch_size,
+        )
     elif args.data == "cub":
         trn_dataset = CUBDataModule(
             "/mimer/NOBACKUP/groups/naiss2023-5-75/CUB/CUB_200_2011",
@@ -111,7 +92,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--name", default="resnet18")
     parser.add_argument("--data", default="whoi_plankton")
-    parser.add_argument("--batch_size", type=int, default=1024)
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--devices", type=int, default=1)
     parser.add_argument("--nodes", type=int, default=1)
     args = parser.parse_args()

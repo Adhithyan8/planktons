@@ -492,6 +492,92 @@ class MuCUBDataModule(L.LightningDataModule):
         )
 
 
+class MuPlanktonDataset(Dataset):
+    def __init__(
+        self,
+        data: dict,
+        transforms_teacher,
+        transforms_student,
+        test_transforms,
+        mode: str = "train",
+    ):
+        self.data = data
+        self.transforms_teacher = transforms_teacher
+        self.transforms_student = transforms_student
+        self.test_transforms = test_transforms
+        self.mode = mode
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        if self.mode == "train":
+            img, id = self.data[idx]
+            img_t = self.transforms_teacher(image=img)["image"]
+            img_s = self.transforms_student(image=img)["image"]
+            img_t = torch.from_numpy(img_t).permute(2, 0, 1)
+            img_s = torch.from_numpy(img_s).permute(2, 0, 1)
+            return img_t, img_s, id
+        else:
+            img, id = self.data[idx]
+            img = self.test_transforms(image=img)["image"]
+            img = torch.from_numpy(img).permute(2, 0, 1)
+            return img, id
+
+
+class MuPlanktonDataModule(L.LightningDataModule):
+    def __init__(
+        self,
+        data: dict,
+        train_transforms_teacher,
+        train_transforms_student,
+        test_transforms,
+        batch_size: int = 2048,
+    ):
+        super().__init__()
+        self.data = data
+        self.train_transforms_teacher = train_transforms_teacher
+        self.train_transforms_student = train_transforms_student
+        self.test_transforms = test_transforms
+        self.batch_size = batch_size
+
+    def setup(self, stage=None):
+        if stage == "fit" or stage is None:
+            self.train_dataset = MuPlanktonDataset(
+                self.data,
+                self.train_transforms_teacher,
+                self.train_transforms_student,
+                self.test_transforms,
+                mode="train",
+            )
+        if stage == "predict" or stage is None:
+            self.test_dataset = MuPlanktonDataset(
+                self.data,
+                self.test_transforms,
+                self.test_transforms,
+                self.test_transforms,
+                mode="test",
+            )
+
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=16,
+            persistent_workers=True,
+        )
+
+    def predict_dataloader(self):
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=16,
+            persistent_workers=True,
+        )
+
+
 """
 BELOW ARE NOT USED IN THE FINAL IMPLEMENTATION
 """

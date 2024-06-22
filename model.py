@@ -53,7 +53,7 @@ class LightningContrastive(L.LightningModule):
                         param.requires_grad_(True)
             self.projection_head = nn.Sequential(
                 nn.Linear(768, 1024),
-                nn.ReLU(),
+                nn.GELU(),
                 nn.Linear(1024, head_dim),
             )
         self.loss = loss
