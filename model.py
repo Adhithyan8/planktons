@@ -244,11 +244,18 @@ class LightningPretrained(L.LightningModule):
 
 
 class CosineClassifier(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int, freeze_layer: int = -1):
+    def __init__(
+        self, in_dim: int, out_dim: int, freeze_layer: int = -1, prototypes=None
+    ):
         super().__init__()
-        self.layer = nn.utils.parametrizations.weight_norm(
-            nn.Linear(in_dim, out_dim, bias=False)
-        )
+        if prototypes is None:
+            self.layer = nn.utils.parametrizations.weight_norm(
+                nn.Linear(in_dim, out_dim, bias=False)
+            )
+        else:
+            linear_layer = nn.Linear(in_dim, out_dim, bias=False)
+            linear_layer.weight.data = prototypes.T
+            self.layer = nn.utils.parametrizations.weight_norm(linear_layer)
         self.layer.parametrizations.weight.original0.data.fill_(1)  # weight norm to 1
         self.layer.parametrizations.weight.original0.requires_grad = (
             False  # freeze weight norm
@@ -293,6 +300,7 @@ class LightningMuContrastive(L.LightningModule):
         n_epochs: int,
         uuid: bool = False,
         arch: str = "resnet",
+        prototypes: torch.Tensor = None,
     ):
         super().__init__()
         if arch == "resnet":
@@ -303,7 +311,7 @@ class LightningMuContrastive(L.LightningModule):
             )
             backbone.fc = nn.Identity()
             backbone.load_state_dict(torch.load(f"model_weights/{name}_bb.pth"))
-            cls_head = CosineClassifier(512, out_dim)
+            cls_head = CosineClassifier(512, out_dim, prototypes=prototypes)
         elif arch == "vit":
             backbone = hub.load(
                 "facebookresearch/dinov2",
@@ -317,7 +325,7 @@ class LightningMuContrastive(L.LightningModule):
                     block_num = int(name.split(".")[1])
                     if block_num >= 11:
                         param.requires_grad_(True)
-            cls_head = CosineClassifier(768, out_dim)
+            cls_head = CosineClassifier(768, out_dim, prototypes=prototypes)
         self.teacher_backbone = backbone
         self.student_backbone = copy.deepcopy(backbone)
         self.teacher_head = cls_head
