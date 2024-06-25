@@ -23,7 +23,15 @@ def main(args):
     model = LightningMuContrastive(
         args.name,
         out_dim=args.out_dim,
-        loss=DistillLoss(30, args.epochs),
+        loss=DistillLoss(
+            epochs_warmup=10,
+            epochs=args.epochs,
+            teacher_temp_init=0.0035,
+            teacher_temp=0.002,
+            student_temp=0.1,
+            lambda_=0.35,
+            lambda_reg=1.0,
+        ),
         n_epochs=args.epochs,
         arch="vit",
     )

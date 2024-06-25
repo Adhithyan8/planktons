@@ -2,7 +2,7 @@
 #SBATCH -A naiss2024-5-84
 #SBATCH --gpus-per-node=0
 #SBATCH -C NOGPU -n 8
-#SBATCH -t 0-04:00:00
+#SBATCH -t 0-01:00:00
 #SBATCH -o %J_slurm.out
 #SBATCH -e %J_slurm.err
 

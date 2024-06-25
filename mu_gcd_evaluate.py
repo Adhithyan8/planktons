@@ -101,10 +101,10 @@ def main(args):
             if i not in debug_info:
                 continue
             plt.hist(debug_info[i]["logit_at_id"], range=[-1, 1], bins=100)
-            plt.savefig(f"figures/hist1_{i}.png")
+            plt.savefig(f"figures/hist3_{i}.png")
             plt.close()
             plt.hist(debug_info[i]["logit_at_index"], range=[-1, 1], bins=100)
-            plt.savefig(f"figures/hist2_{i}.png")
+            plt.savefig(f"figures/hist4_{i}.png")
             plt.close()
 
 

@@ -11,4 +11,4 @@ module purge
 module load PyTorch-Lightning/2.2.1-foss-2023a-CUDA-12.1.1
 module load PyTorch-bundle/2.1.2-foss-2023a-CUDA-12.1.1
 source myvenv/bin/activate
-srun python mu_gcd_inference.py --name semicosineCUBvit --data cub --out-dim 230
+srun python mu_gcd_inference.py --name semicosineWHOIvit --data whoi_plankton --out-dim 110
