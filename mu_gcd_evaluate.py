@@ -49,11 +49,70 @@ def main(args):
     print(f"Accuracy: {acc:.4f}")
     print(f"Macro F1: {f1:.4f}")
 
+    if args.verbose:
+        index_to_id_map = {}
+        for i in range(output.shape[1]):
+            index_to_id_map[i] = c_ind[i]
+        id_to_index_map = {v: k for k, v in index_to_id_map.items()}
+
+        debug_info = {}
+        for i in range(prd_tst.shape[0]):
+            if lbl_tst[i] not in debug_info:
+                debug_info[lbl_tst[i]] = {
+                    "num_samples": 0,
+                    "num_preds": 0,
+                    "num_correct": 0,
+                    "logit_at_index": [],
+                    "logit_at_id": [],
+                }
+            if opt_prd[i] not in debug_info:
+                debug_info[opt_prd[i]] = {
+                    "num_samples": 0,
+                    "num_preds": 0,
+                    "num_correct": 0,
+                    "logit_at_index": [],
+                    "logit_at_id": [],
+                }
+            debug_info[lbl_tst[i]]["num_samples"] += 1
+            debug_info[opt_prd[i]]["num_preds"] += 1
+            if lbl_tst[i] == opt_prd[i]:
+                debug_info[lbl_tst[i]]["num_correct"] += 1
+            debug_info[lbl_tst[i]]["logit_at_index"].append(
+                output[NUM_TRAIN + i][np.argmax(output[NUM_TRAIN + i])]
+            )
+            debug_info[lbl_tst[i]]["logit_at_id"].append(
+                output[NUM_TRAIN + i][id_to_index_map[lbl_tst[i]]]
+            )
+
+        for i in num_classes:
+            if i not in debug_info:
+                debug_info[i] = {
+                    "num_samples": 0,
+                    "num_preds": 0,
+                    "num_correct": 0,
+                    "logit_at_index": [],
+                    "logit_at_id": [],
+                }
+            print(
+                f"{i}, {debug_info[i]['num_samples']}, {debug_info[i]['num_preds']}, {debug_info[i]['num_correct']/debug_info[i]['num_samples']:.4f}, {np.mean(debug_info[i]['logit_at_id']):.4f}, {np.var(debug_info[i]['logit_at_id']):.4f}, {np.mean(debug_info[i]['logit_at_index']):.4f}, {np.var(debug_info[i]['logit_at_index']):.4f}"
+            )
+
+        for i in range(num_classes):
+            if i not in debug_info:
+                continue
+            plt.hist(debug_info[i]["logit_at_id"], range=[-1, 1], bins=100)
+            plt.savefig(f"hist1_{i}.png")
+            plt.close()
+            plt.hist(debug_info[i]["logit_at_index"], range=[-1, 1], bins=100)
+            plt.savefig(f"hist2_{i}.png")
+            plt.close()
+
 
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--name", default="resnet18")
     parser.add_argument("--data", default="cub")
+    parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
     main(args)

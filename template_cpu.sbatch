@@ -10,4 +10,4 @@ module purge
 module load scikit-learn/1.3.1-gfbf-2023a
 module load matplotlib/3.7.2-gfbf-2023a
 source myvenv/bin/activate
-srun python mu_gcd_evaluate.py --name semicosineWHOIvit --data whoi_plankton
+srun python mu_gcd_evaluate.py --name semicosineCUBvit --data cub
