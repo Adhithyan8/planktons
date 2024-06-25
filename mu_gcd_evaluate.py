@@ -84,7 +84,7 @@ def main(args):
                 output[NUM_TRAIN + i][id_to_index_map[lbl_tst[i]]]
             )
 
-        for i in num_classes:
+        for i in range(num_classes):
             if i not in debug_info:
                 debug_info[i] = {
                     "num_samples": 0,
@@ -94,17 +94,17 @@ def main(args):
                     "logit_at_id": [],
                 }
             print(
-                f"{i}, {debug_info[i]['num_samples']}, {debug_info[i]['num_preds']}, {debug_info[i]['num_correct']/debug_info[i]['num_samples']:.4f}, {np.mean(debug_info[i]['logit_at_id']):.4f}, {np.var(debug_info[i]['logit_at_id']):.4f}, {np.mean(debug_info[i]['logit_at_index']):.4f}, {np.var(debug_info[i]['logit_at_index']):.4f}"
+                f"{i}, {debug_info[i]['num_samples']}, {debug_info[i]['num_preds']}, {(debug_info[i]['num_correct']/debug_info[i]['num_samples']) if debug_info[i]['num_samples'] > 0 else 0}, {np.mean(debug_info[i]['logit_at_id']):.4f}, {np.var(debug_info[i]['logit_at_id']):.4f}, {np.mean(debug_info[i]['logit_at_index']):.4f}, {np.var(debug_info[i]['logit_at_index']):.4f}"
             )
 
         for i in range(num_classes):
             if i not in debug_info:
                 continue
             plt.hist(debug_info[i]["logit_at_id"], range=[-1, 1], bins=100)
-            plt.savefig(f"hist1_{i}.png")
+            plt.savefig(f"figures/hist1_{i}.png")
             plt.close()
             plt.hist(debug_info[i]["logit_at_index"], range=[-1, 1], bins=100)
-            plt.savefig(f"hist2_{i}.png")
+            plt.savefig(f"figures/hist2_{i}.png")
             plt.close()
 
 
