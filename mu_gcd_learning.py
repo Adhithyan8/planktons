@@ -30,7 +30,7 @@ def main(args):
             teacher_temp=0.002,
             student_temp=0.1,
             lambda_=0.35,
-            lambda_reg=1.0,
+            lambda_reg=0.0,
         ),
         n_epochs=args.epochs,
         arch="vit",
