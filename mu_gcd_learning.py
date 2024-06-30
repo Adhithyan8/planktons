@@ -5,7 +5,7 @@ import pytorch_lightning as L
 import torch
 
 from data import MuCUBDataModule, MuPlanktonDataModule, Padding, make_data
-from losses import DistillLoss
+from losses import DistillLoss, DistillL2Loss
 from model import LightningMuContrastive
 from transforms import (
     CUB_MU_INFERENCE,
@@ -23,15 +23,7 @@ def main(args):
     model = LightningMuContrastive(
         args.name,
         out_dim=args.out_dim,
-        loss=DistillLoss(
-            epochs_warmup=10,
-            epochs=args.epochs,
-            teacher_temp_init=0.0035,
-            teacher_temp=0.002,
-            student_temp=0.1,
-            lambda_=0.35,
-            lambda_reg=0.0,
-        ),
+        loss=DistillL2Loss(),
         n_epochs=args.epochs,
         arch="vit",
     )

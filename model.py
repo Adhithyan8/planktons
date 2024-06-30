@@ -359,7 +359,12 @@ class LightningMuContrastive(L.LightningModule):
         x_t, x_s, id = batch
         x_t = self.forward_teacher(x_t)
         x_s = self.forward(x_s)
-        loss = self.loss(x_t, x_s, id, self.current_epoch)
+        if self.loss.__class__.__name__ == "DistillLoss":
+            loss = self.loss(x_t, x_s, id, self.current_epoch)
+        elif self.loss.__class__.__name__ == "DistillL2Loss":
+            loss = self.loss(
+                x_t, x_s, id, self.student_head.layer.parametrizations.weight.original1
+            )
         return loss
 
     def on_after_backward(self):
