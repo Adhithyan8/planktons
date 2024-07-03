@@ -497,7 +497,7 @@ class KoLeoLoss(torch.nn.Module):
         return loss
 
 
-class DistillL2Loss(torch.nn.Module):
+class DistillLoss2(torch.nn.Module):
     def __init__(
         self,
         lambda_=0.35,
@@ -510,25 +510,15 @@ class DistillL2Loss(torch.nn.Module):
     def forward(self, teacher_out, student_out, id, student_head_weights):
         teacher_out = teacher_out.detach()
 
-        unsup_loss = torch.mean(torch.sum((teacher_out - student_out) ** 2, dim=-1))
+        teacher_max = teacher_out.max(1)[1]
+        unsup_loss = -student_out[torch.arange(len(teacher_max)), teacher_max].mean()
 
         label = id[id != -1]
         student_out_labeled = student_out[id != -1]
         if len(label) == 0:
             sup_loss = 0.0
         else:
-            sup_loss = torch.mean(
-                torch.sum(
-                    (
-                        student_out_labeled
-                        - torch.nn.functional.one_hot(
-                            label, num_classes=student_out.shape[-1]
-                        )
-                    )
-                    ** 2,
-                    dim=-1,
-                )
-            )
+            sup_loss = -student_out_labeled[torch.arange(len(label)), label].mean()
 
         reg = KoLeoLoss()(student_head_weights)
 

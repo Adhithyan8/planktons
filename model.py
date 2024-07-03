@@ -361,7 +361,7 @@ class LightningMuContrastive(L.LightningModule):
         x_s = self.forward(x_s)
         if self.loss.__class__.__name__ == "DistillLoss":
             loss = self.loss(x_t, x_s, id, self.current_epoch)
-        elif self.loss.__class__.__name__ == "DistillL2Loss":
+        elif self.loss.__class__.__name__ == "DistillLoss2":
             loss = self.loss(
                 x_t, x_s, id, self.student_head.layer.parametrizations.weight.original1
             )
