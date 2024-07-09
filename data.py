@@ -231,7 +231,7 @@ class CUBDataset(Dataset):
         self.mode = mode
         with open(f"{path}/classes.txt") as f:
             self.label2id = {
-                line.split(" ")[1].strip(): int(line.split(" ")[0]) for line in f
+                line.split(" ")[1].strip(): int(line.split(" ")[0]) - 1 for line in f
             }
         with open(f"{path}/images.txt") as f:
             self.images = {
@@ -239,12 +239,15 @@ class CUBDataset(Dataset):
             }
         with open(f"{path}/image_class_labels.txt") as f:
             self.labels = {
-                int(line.split(" ")[0]): int(line.split(" ")[1]) for line in f
+                int(line.split(" ")[0]): int(line.split(" ")[1]) - 1 for line in f
             }
         with open(f"{path}/train_test_split.txt") as f:
             self.labeled = np.array([int(line.split(" ")[1]) for line in f])
         with open(f"labeled_classes_cub.json") as f:
             self.labeled_classes = json.load(f)
+            self.labeled_classes = [
+                id - 1 for id in self.labeled_classes
+            ]  # 0-indexed id
 
     def __len__(self):
         if self.split == "train":

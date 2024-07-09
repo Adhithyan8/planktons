@@ -5,7 +5,13 @@ import pytorch_lightning as L
 import torch
 
 from data import CUBDataModule, Padding, PlanktonDataModule, make_data
-from losses import CombinedLoss, InfoNCECosineSelfSupervised, InfoNCECosineSupervised
+from losses import (
+    CombinedLoss,
+    InfoNCECauchySelfSupervised,
+    InfoNCECauchySupervised,
+    InfoNCECosineSelfSupervised,
+    InfoNCECosineSupervised,
+)
 from model import LightningContrastive
 from transforms import (
     CONTRASTIVE_TRANSFORM,
@@ -18,8 +24,8 @@ torch.set_float32_matmul_precision("high")
 
 
 def main(args):
-    loss1 = InfoNCECosineSelfSupervised(temperature=1.0)
-    loss2 = InfoNCECosineSupervised(temperature=0.07)
+    loss1 = InfoNCECauchySelfSupervised(temperature=1.0)
+    loss2 = InfoNCECauchySupervised(temperature=0.07)
 
     model = LightningContrastive(
         head_dim=args.head_dim,

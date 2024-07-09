@@ -5,7 +5,7 @@ import pytorch_lightning as L
 import torch
 
 from data import CUBDataModule, Padding, PlanktonDataModule, make_data
-from losses import InfoNCECauchySelfSupervised
+from losses import CombinedLoss, InfoNCECauchySelfSupervised, InfoNCECauchySupervised
 from model import LightningTsimnce
 from transforms import (
     CONTRASTIVE_TRANSFORM,
@@ -18,13 +18,17 @@ torch.set_float32_matmul_precision("high")
 
 
 def main(args):
+    loss1 = InfoNCECauchySelfSupervised(temperature=1.0)
+    loss2 = InfoNCECauchySupervised(temperature=1.0)
+
     model = LightningTsimnce(
         name=args.name,
         old_head_dim=args.old_head_dim,
         new_head_dim=args.new_head_dim,
-        loss=InfoNCECauchySelfSupervised(),
+        loss=CombinedLoss(loss1, loss2, 0.35),
         n_epochs=args.readout_epochs,
         phase="readout",
+        arch="vit",
     )
     if args.data == "whoi_plankton":
         data = make_data(
@@ -58,6 +62,8 @@ def main(args):
         devices=args.devices,
         num_nodes=args.nodes,
         strategy="ddp",
+        sync_batchnorm=True,
+        use_distributed_sampler=True,
     )
     trainer.fit(model, dataset)
 

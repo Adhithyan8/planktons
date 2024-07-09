@@ -109,22 +109,31 @@ class LightningTsimnce(L.LightningModule):
         n_epochs: int,
         phase: str = "readout",
         uuid: bool = False,
+        arch: str = "resnet",
     ):
         super().__init__()
         if phase == "readout":
-            self.backbone = hub.load(
-                "pytorch/vision:v0.9.0",
-                "resnet18",
-                pretrained=True,
-            )
-            self.backbone.fc = nn.Identity()
+            if arch == "resnet":
+                self.backbone = hub.load(
+                    "pytorch/vision:v0.9.0",
+                    "resnet18",
+                    pretrained=True,
+                )
+                self.backbone.fc = nn.Identity()
+                feature_dim = 512
+            elif arch == "vit":
+                self.backbone = hub.load(
+                    "facebookresearch/dinov2",
+                    "dinov2_vitb14_reg",
+                )
+                feature_dim = 768
             self.backbone.load_state_dict(torch.load(f"model_weights/{name}_bb.pth"))
             for param in self.backbone.parameters():
                 param.requires_grad_(False)
 
             self.projection_head = nn.Sequential(
-                nn.Linear(512, 1024),
-                nn.ReLU(),
+                nn.Linear(feature_dim, 1024),
+                nn.ReLU() if arch == "resnet" else nn.GELU(),
                 nn.Linear(1024, old_head_dim),
             )
             self.projection_head.load_state_dict(
@@ -137,23 +146,39 @@ class LightningTsimnce(L.LightningModule):
                 param.requires_grad_(True)
 
         elif phase == "finetune":
-            self.backbone = hub.load(
-                "pytorch/vision:v0.9.0",
-                "resnet18",
-                pretrained=True,
-            )
-            self.backbone.fc = nn.Identity()
+            if arch == "resnet":
+                self.backbone = hub.load(
+                    "pytorch/vision:v0.9.0",
+                    "resnet18",
+                    pretrained=True,
+                )
+                self.backbone.fc = nn.Identity()
+                feature_dim = 512
+            elif arch == "vit":
+                self.backbone = hub.load(
+                    "facebookresearch/dinov2",
+                    "dinov2_vitb14_reg",
+                )
+                feature_dim = 768
             self.backbone.load_state_dict(
                 torch.load(f"model_weights/read_{name}_bb.pth")
             )
-            for param in self.backbone.parameters():
-                param.requires_grad_(True)  # finetuning all layers
-            for param in self.backbone.layer4.parameters():
-                param.requires_grad_(True)
-
+            if arch == "resnet":
+                for param in self.backbone.parameters():
+                    param.requires_grad_(True)  # finetuning all layers
+                for param in self.backbone.layer4.parameters():
+                    param.requires_grad_(True)
+            elif arch == "vit":
+                for param in self.backbone.parameters():
+                    param.requires_grad_(False)
+                for name_, param in self.backbone.named_parameters():
+                    if "block" in name_:
+                        block_num = int(name_.split(".")[1])
+                        if block_num >= 11:
+                            param.requires_grad_(True)
             self.projection_head = nn.Sequential(
-                nn.Linear(512, 1024),
-                nn.ReLU(),
+                nn.Linear(feature_dim, 1024),
+                nn.ReLU() if arch == "resnet" else nn.GELU(),
                 nn.Linear(1024, new_head_dim),
             )
             self.projection_head.load_state_dict(
@@ -193,20 +218,21 @@ class LightningTsimnce(L.LightningModule):
 
     def configure_optimizers(self):
         if self.phase == "readout":
-            optimizer = optim.AdamW(self.parameters(), lr=0.1, weight_decay=5e-4)
-            scheduler = optim.lr_scheduler.OneCycleLR(
-                optimizer,
-                max_lr=0.12,
-                total_steps=self.epochs,
-                epochs=self.epochs,
-                pct_start=0.05,
-                div_factor=1e4,
-                final_div_factor=1e4,
+            optimizer = optim.SGD(
+                self.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-5
+            )
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=self.epochs, eta_min=0
             )
             return [optimizer], [scheduler]
         elif self.phase == "finetune":
-            optimizer = optim.AdamW(self.parameters(), lr=0.00012, weight_decay=5e-4)
-            return optimizer
+            optimizer = optim.SGD(
+                self.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-5
+            )
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=self.epochs, eta_min=0
+            )
+            return [optimizer], [scheduler]
 
 
 class LightningPretrained(L.LightningModule):
@@ -254,7 +280,7 @@ class CosineClassifier(nn.Module):
             )
         else:
             linear_layer = nn.Linear(in_dim, out_dim, bias=False)
-            linear_layer.weight.data = prototypes.T
+            linear_layer.weight.data = prototypes
             self.layer = nn.utils.parametrizations.weight_norm(linear_layer)
         self.layer.parametrizations.weight.original0.data.fill_(1)  # weight norm to 1
         self.layer.parametrizations.weight.original0.requires_grad = (
