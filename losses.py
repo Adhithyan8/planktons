@@ -1,4 +1,5 @@
 import torch
+import torch.distributed as dist
 
 
 class InfoNCECosineSelfSupervised(torch.nn.Module):
@@ -414,6 +415,8 @@ class DistillLoss(torch.nn.Module):
         student_temp=0.1,
         lambda_=0.35,
         lambda_reg=2.0,
+        center_momentum=0.9,
+        out_dim=128,
     ):
         super().__init__()
         self.student_temp = student_temp
@@ -425,10 +428,12 @@ class DistillLoss(torch.nn.Module):
         )
         self.lambda_ = lambda_
         self.lambda_reg = lambda_reg
+        self.center_momentum = center_momentum
+        self.register_buffer("center", torch.zeros(1, out_dim))
 
     def forward(self, teacher_out, student_out, id, epoch):
         teacher_temp = self.teacher_temp_schedule[epoch]
-        teacher_out = torch.nn.functional.softmax(teacher_out / teacher_temp, dim=-1)
+        teacher_out = torch.nn.functional.softmax((teacher_out - self.center) / teacher_temp, dim=-1)
         teacher_out = teacher_out.detach()
         student_out /= self.student_temp
 
@@ -438,6 +443,7 @@ class DistillLoss(torch.nn.Module):
                 dim=-1,
             )
         )
+        self.update_center(teacher_out)
 
         label = id[id != -1]
         student_out_labeled = student_out[id != -1]
@@ -457,6 +463,14 @@ class DistillLoss(torch.nn.Module):
             + self.lambda_reg * reg
         )
         return loss
+    
+    @torch.no_grad()
+    def update_center(self, teacher_out):
+        batch_center = torch.sum(teacher_out, dim=0, keepdim=True)
+        dist.all_reduce(batch_center)
+        batch_center /= dist.get_world_size()
+
+        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
 
 
 class KoLeoLoss(torch.nn.Module):
