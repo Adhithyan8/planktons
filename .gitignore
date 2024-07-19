@@ -10,3 +10,4 @@ embeddings/
 template_cpu.sbatch
 template_gpu.sbatch
 template_rpl.sbatch
+myenv/

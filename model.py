@@ -346,9 +346,9 @@ class LightningMuContrastive(L.LightningModule):
             backbone.load_state_dict(torch.load(f"model_weights/{name}_bb.pth"))
             for param in backbone.parameters():
                 param.requires_grad_(False)
-            for name, param in backbone.named_parameters():
-                if "block" in name:
-                    block_num = int(name.split(".")[1])
+            for name_, param in backbone.named_parameters():
+                if "block" in name_:
+                    block_num = int(name_.split(".")[1])
                     if block_num >= 11:
                         param.requires_grad_(True)
             cls_head = CosineClassifier(768, out_dim, prototypes=prototypes)
@@ -385,12 +385,7 @@ class LightningMuContrastive(L.LightningModule):
         x_t, x_s, id = batch
         x_t = self.forward_teacher(x_t)
         x_s = self.forward(x_s)
-        if self.loss.__class__.__name__ == "DistillLoss":
-            loss = self.loss(x_t, x_s, id, self.current_epoch)
-        elif self.loss.__class__.__name__ == "DistillLoss2":
-            loss = self.loss(
-                x_t, x_s, id, self.student_head.layer.parametrizations.weight.original1
-            )
+        loss = self.loss(x_t, x_s, id, self.current_epoch)
         return loss
 
     def on_after_backward(self):

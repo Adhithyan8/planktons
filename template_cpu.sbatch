@@ -9,8 +9,6 @@
 module purge
 module load scikit-learn/1.3.1-gfbf-2023a
 module load matplotlib/3.7.2-gfbf-2023a
-module load PyTorch-Lightning/2.2.1-foss-2023a-CUDA-12.1.1
-module load PyTorch-bundle/2.1.2-foss-2023a-CUDA-12.1.1
 source myvenv/bin/activate
 srun python prototypes_save.py --name semicosineWHOIvit --out-dim 110
 srun python prototypes_check.py --name semicosineWHOIvit --data whoi_plankton
