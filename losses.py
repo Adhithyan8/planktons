@@ -433,7 +433,9 @@ class DistillLoss(torch.nn.Module):
 
     def forward(self, teacher_out, student_out, id, epoch):
         teacher_temp = self.teacher_temp_schedule[epoch]
-        teacher_out = torch.nn.functional.softmax((teacher_out - self.center) / teacher_temp, dim=-1)
+        teacher_out = torch.nn.functional.softmax(
+            (teacher_out - self.center) / teacher_temp, dim=-1
+        )
         teacher_out = teacher_out.detach()
         student_out /= self.student_temp
 
@@ -463,14 +465,44 @@ class DistillLoss(torch.nn.Module):
             + self.lambda_reg * reg
         )
         return loss
-    
+
     @torch.no_grad()
     def update_center(self, teacher_out):
         batch_center = torch.sum(teacher_out, dim=0, keepdim=True)
         dist.all_reduce(batch_center)
         batch_center /= dist.get_world_size()
 
-        self.center = self.center * self.center_momentum + batch_center * (1 - self.center_momentum)
+        self.center = self.center * self.center_momentum + batch_center * (
+            1 - self.center_momentum
+        )
+
+
+class BYOLloss(torch.nn.Module):
+    def __init__(
+        self,
+        lambda_=0.35,
+        out_dim=128,
+    ):
+        super().__init__()
+        self.lambda_ = lambda_
+        self.out_dim = out_dim
+
+    def forward(self, teacher_out, student_out, id):
+        teacher_out = teacher_out.detach()
+        unsup_loss = torch.nn.functional.mse_loss(student_out, teacher_out)
+
+        label = id[id != -1]
+        student_out_labeled = student_out[id != -1]
+        if len(label) == 0:
+            sup_loss = 0.0
+        else:
+            target = torch.nn.functional.one_hot(
+                label, num_classes=self.out_dim
+            ).float()
+            sup_loss = torch.nn.functional.mse_loss(student_out_labeled, target)
+
+        loss = (1 - self.lambda_) * unsup_loss + self.lambda_ * sup_loss
+        return loss
 
 
 class KoLeoLoss(torch.nn.Module):
@@ -509,4 +541,3 @@ class KoLeoLoss(torch.nn.Module):
             distances = self.pdist(student_output, student_output[I])  # BxD, BxD -> B
             loss = -torch.log(distances + eps).mean()
         return loss
-

@@ -5,8 +5,8 @@ import pytorch_lightning as L
 import torch
 
 from data import MuCUBDataModule, MuPlanktonDataModule, Padding, make_data
-from losses import DistillLoss, DistillLoss2
-from model import LightningMuContrastive
+from losses import DistillLoss, BYOLloss
+from model import LightningMuContrastive, LightningBYOL
 from transforms import (
     CUB_MU_INFERENCE,
     CUB_MU_STUDENT,
@@ -20,17 +20,14 @@ torch.set_float32_matmul_precision("high")
 
 
 def main(args):
-    model = LightningMuContrastive(
-        args.name,
+    model = LightningBYOL(
+        name=args.name,
         out_dim=args.out_dim,
-        loss=DistillLoss(
-            epochs_warmup=30,
-            epochs=args.epochs,
-            lambda_reg=0.0,
+        loss=BYOLloss(
             out_dim=args.out_dim,
         ),
         n_epochs=args.epochs,
-        arch="vit",
+        uuid=False,
     )
     if args.data == "whoi_plankton":
         data = make_data(
@@ -70,10 +67,10 @@ def main(args):
     trainer.fit(model, dataset)
 
     # save the model
-    torch.save(model.teacher_backbone.state_dict(), f"model_weights/{args.name}_tb.pth")
-    torch.save(model.teacher_head.state_dict(), f"model_weights/{args.name}_th.pth")
-    torch.save(model.student_backbone.state_dict(), f"model_weights/{args.name}_sb.pth")
-    torch.save(model.student_head.state_dict(), f"model_weights/{args.name}_sh.pth")
+    torch.save(model.backbone.state_dict(), f"model_weights/{args.name}_sb.pth")
+    torch.save(model.projection_head.state_dict(), f"model_weights/{args.name}_sh.pth")
+    torch.save(model.backbone_ema.state_dict(), f"model_weights/{args.name}_tb.pth")
+    torch.save(model.projection_head_ema.state_dict(), f"model_weights/{args.name}_th.pth")
 
 
 if __name__ == "__main__":

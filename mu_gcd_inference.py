@@ -6,7 +6,7 @@ import pytorch_lightning as L
 import torch
 
 from data import MuCUBDataModule, MuPlanktonDataModule, Padding, make_data
-from model import LightningMuContrastive
+from model import LightningMuContrastive, LightningBYOL
 from transforms import (
     CUB_MU_INFERENCE,
     CUB_MU_STUDENT,
@@ -20,22 +20,21 @@ torch.set_float32_matmul_precision("high")
 
 
 def main(args):
-    model = LightningMuContrastive(
-        args.name,
+    model = LightningBYOL(
+        name=args.name,
         out_dim=args.out_dim,
         loss=None,
         n_epochs=0,
-        uuid=args.uuid,
-        arch="vit",
+        uuid=False,
     )
-    model.teacher_backbone.load_state_dict(
+    model.backbone_ema.load_state_dict(
         torch.load(f"model_weights/{args.name}_tb.pth")
     )
-    model.teacher_head.load_state_dict(torch.load(f"model_weights/{args.name}_th.pth"))
-    model.student_backbone.load_state_dict(
+    model.projection_head_ema.load_state_dict(torch.load(f"model_weights/{args.name}_th.pth"))
+    model.backbone.load_state_dict(
         torch.load(f"model_weights/{args.name}_sb.pth")
     )
-    model.student_head.load_state_dict(torch.load(f"model_weights/{args.name}_sh.pth"))
+    model.projection_head.load_state_dict(torch.load(f"model_weights/{args.name}_sh.pth"))
 
     if args.data == "whoi_plankton":
         trn_data = make_data(

@@ -1,13 +1,6 @@
 .vscode/
 __pycache__/
-planktons_dataset/
-phytoplankton_Utö_2021_labeled
-lightning_logs/
-embeddings/
 *.err
 *.out
 *.pth
-template_cpu.sbatch
-template_gpu.sbatch
-template_rpl.sbatch
-myenv/
+*.sh

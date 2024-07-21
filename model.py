@@ -413,3 +413,94 @@ class LightningMuContrastive(L.LightningModule):
             optimizer, T_max=self.epochs, eta_min=0
         )
         return [optimizer], [scheduler]
+    
+
+class LightningBYOL(L.LightningModule):
+    def __init__(
+        self,
+        name: str,
+        out_dim: int,
+        loss: nn.Module,
+        n_epochs: int,
+        uuid: bool = False,
+    ):
+        super().__init__()
+        backbone = hub.load(
+            "facebookresearch/dinov2",
+            "dinov2_vitb14_reg",
+        )
+        backbone.load_state_dict(torch.load(f"model_weights/{name}_bb.pth"))
+        for param in backbone.parameters():
+            param.requires_grad_(False)
+        for name_, param in backbone.named_parameters():
+            if "block" in name_:
+                block_num = int(name_.split(".")[1])
+                if block_num >= 11:
+                    param.requires_grad_(True)
+        proj_head = CosineClassifier(768, out_dim, prototypes=None)
+        pred_head = nn.Sequential(
+            nn.Linear(out_dim, 2048),
+            nn.ReLU(),
+            nn.BatchNorm1d(num_features=2048),
+            nn.Linear(2048, out_dim, bias=False),
+        )
+        self.backbone = backbone
+        self.projection_head = proj_head
+        self.prediction_head = pred_head
+        self.backbone_ema = copy.deepcopy(backbone)
+        self.projection_head_ema = copy.deepcopy(proj_head)
+
+        for param in self.backbone_ema.parameters():
+            param.requires_grad_(False)
+        for param in self.projection_head_ema.parameters():
+            param.requires_grad_(False)
+
+        self.loss = loss
+        self.epochs = n_epochs
+        self.uuid = uuid
+
+    def forward(self, x):
+        x = self.backbone(x)
+        x = self.projection_head(x)
+        x = self.prediction_head(x)
+        return x
+    
+    def forward_ema(self, x):
+        x = self.backbone_ema(x)
+        x = self.projection_head_ema(x)
+        return x
+    
+    def training_step(self, batch, batch_idx):
+        momentum = cosine_schedule(self.current_epoch, self.epochs, 0.996, 1.0)
+        update_teacher(self.backbone_ema, self.backbone, momentum)
+        update_teacher(self.projection_head_ema, self.projection_head, momentum)
+
+        x_t, x_s, id = batch
+        x_t = self.forward_ema(x_t)
+        x_s = self.forward(x_s)
+        loss = self.loss(x_t, x_s, id)
+        return loss
+
+    def predict_step(self, batch, batch_idx):
+        if self.uuid:
+            x, id, fname = batch
+        else:
+            x, id = batch
+        out = self.forward_ema(x)  # using teacher for inference
+        if self.uuid:
+            return out, id, fname
+        else:
+            return out, id
+        
+    def configure_optimizers(self):
+        optimizer = optim.SGD(
+            self.parameters(),
+            lr=0.1,
+            momentum=0.9,
+            weight_decay=1e-3,
+        )
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=self.epochs, eta_min=0
+        )
+        return [optimizer], [scheduler]
+    
