@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, default="semicontrastCUB")
-    parser.add_argument("--data", type=str, default="cub")
+    parser.add_argument("--data", type=str, default="CUB")
     parser.add_argument("--knn", action="store_true")
     parser.add_argument("--kmeans", action="store_true")
     parser.add_argument("--k", type=int, default=5)

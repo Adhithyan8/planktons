@@ -4,3 +4,4 @@ __pycache__/
 *.out
 *.pth
 *.sh
+myvenv/
