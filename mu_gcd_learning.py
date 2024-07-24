@@ -23,7 +23,7 @@ def main(args):
     model = LightningBYOL(
         name=args.name,
         out_dim=args.out_dim,
-        loss=BYOLloss(
+        loss=BYOLloss(                   # TODO: use lightly DINO loss
             out_dim=args.out_dim,
         ),
         n_epochs=args.epochs,

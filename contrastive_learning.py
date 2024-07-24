@@ -24,10 +24,10 @@ torch.set_float32_matmul_precision("high")
 
 
 def main(args):
-    loss1 = InfoNCECauchySelfSupervised(temperature=1.0)
-    loss2 = InfoNCECauchySupervised(temperature=0.07)
+    loss1 = InfoNCECauchySelfSupervised(temperature=1.0) # TODO: use lightly NT-Xent loss
+    loss2 = InfoNCECauchySupervised(temperature=0.07)    # TODO: use NTXentLossSupervised
 
-    model = LightningContrastive(
+    model = LightningContrastive(                        # TODO: replace with lightly's version
         head_dim=args.head_dim,
         pretrained=args.pretrained,
         loss=CombinedLoss(loss1, loss2, 0.35),
