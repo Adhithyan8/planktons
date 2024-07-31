@@ -115,9 +115,7 @@ for dataset in datasets:
         torch.nn.Linear(2048, 256),
     )  # TODO: do we need BN?
 
-    model = SimCLR(
-        backbone, projection
-    )  # TODO: check the eRANK of features after inference
+    model = SimCLR(backbone, projection)
 
     if dataset == "CUB":
         info = CUB_INFO

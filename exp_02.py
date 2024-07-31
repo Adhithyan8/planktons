@@ -18,7 +18,7 @@ from datasheet import *
 # continuing with this precision setting
 torch.set_float32_matmul_precision("medium")
 
-model = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14_reg')
+model = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14_reg")
 
 
 # wrap in lightning module
@@ -37,6 +37,26 @@ class ViT(L.LightningModule):
 
 
 ViT_model = ViT(model)
+
+
+# lets define the transforms for the forward pass
+def data_transform(img, label):
+    # work around to maintain aspect ratio with albumentations
+    with Image.open(img) as img:
+        img = np.array(img)
+    if img.shape[0] > 256 or img.shape[1] > 256:
+        img = A.LongestMaxSize(max_size=256)(image=img)["image"]
+    img = A.PadIfNeeded(img.shape[1], img.shape[0], border_mode=0, value=0)(image=img)[
+        "image"
+    ]  # TODO: try mode 4
+    img = A.Resize(256, 256)(image=img)["image"]
+    img = A.CenterCrop(224, 224)(image=img)["image"]
+    # if grayscale, convert to 3 channels
+    if len(img.shape) == 2:
+        img = A.ToRGB()(image=img)["image"]
+    img = A.Normalize()(image=img)["image"]
+    img = torch.from_numpy(img).permute(2, 0, 1)
+    return img, label
 
 
 # datasets to evaluate on
@@ -60,27 +80,6 @@ for dataset in datasets:
         info = HERB19_INFO
     elif dataset == "PLANKTON":
         info = PLANKTON_INFO
-
-    # lets define the transforms for the forward pass
-    def data_transform(img, label):
-        # work around to maintain aspect ratio with albumentations
-        with Image.open(img) as img:
-            img = np.array(img)
-        if img.shape[0] > 256 or img.shape[1] > 256:
-            img = A.LongestMaxSize(max_size=256)(image=img)["image"]
-        img = A.PadIfNeeded(img.shape[1], img.shape[0], border_mode=0, value=0)(
-            image=img
-        )[
-            "image"
-        ]  # TODO: try mode 44
-        img = A.Resize(256, 256)(image=img)["image"]
-        img = A.CenterCrop(224, 224)(image=img)["image"]
-        # if grayscale, convert to 3 channels
-        if len(img.shape) == 2:
-            img = A.ToRGB()(image=img)["image"]
-        img = A.Normalize()(image=img)["image"]
-        img = torch.from_numpy(img).permute(2, 0, 1)
-        return img, label
 
     trn_old_dataset = make_dataset(
         info, split_fit="train", split_cat="old", transform=data_transform

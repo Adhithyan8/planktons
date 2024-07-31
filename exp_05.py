@@ -71,10 +71,12 @@ class DINO(L.LightningModule):
         momentum = cosine_schedule(self.current_epoch, 100, 0.996, 1)
         update_momentum(self.student_backbone, self.teacher_backbone, momentum)
         update_momentum(self.student_head, self.teacher_head, momentum)
-        views, _ = batch  # TODO: currently ignoring labels
+        views, labels = batch  # TODO: currently ignoring labels
         student_out = [self.forward(view) for view in views]
         teacher_out = [self.forward_teacher(view) for view in views]
-        loss = self.criterion(teacher_out, student_out, epoch=self.current_epoch)
+        loss = self.criterion(
+            teacher_out, student_out, labels, epoch=self.current_epoch
+        )
         return loss
 
     def on_after_backward(self):
@@ -83,7 +85,7 @@ class DINO(L.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
             self.student_head.parameters(), lr=1e-1
-        )  # TODO: try increasing lr
+        )  # TODO: try decreasing lr
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=100, eta_min=0
         )
@@ -116,6 +118,9 @@ def data_transform(img, label):
     img1 = augs(image=img)["image"]
     img0 = torch.from_numpy(img0).permute(2, 0, 1)
     img1 = torch.from_numpy(img1).permute(2, 0, 1)
+    # mask labels
+    label = -1
+    label = torch.tensor(label)
     return (img0, img1), label
 
 

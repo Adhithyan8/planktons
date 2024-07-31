@@ -19,7 +19,7 @@ def eRANK(embeddings):
     # compute eigenvalues
     eigvals = np.linalg.eigvals(corr)
     # normalize eigenvalues
-    eigvals = eigvals / np.sum(eigvals)
+    eigvals = (eigvals + 1e-6) / np.sum(eigvals)  # add 1e-6 to avoid log(0)
     # shannon entropy
     entropy = -np.sum(eigvals * np.log(eigvals))
     # effective rank
@@ -28,7 +28,7 @@ def eRANK(embeddings):
 
 
 def main(args):
-    datasets = {"CUB"}
+    datasets = ["CUB"]
     for data in datasets:
         trn_old_out = np.load(f"outputs/{args.name}_{data}_trn_old_out.npy")
         trn_new_out = np.load(f"outputs/{args.name}_{data}_trn_new_out.npy")
@@ -148,6 +148,61 @@ def main(args):
         eRANK_val = eRANK(out)
         print(f"Effective Rank: {eRANK_val:.4f}")
 
+        if args.logits:
+            if data == "PLANKTON":
+                n = 110
+            elif data == "HERB19":
+                n = 700
+            elif data == "SCARS":
+                n = 230
+            elif data == "AIRCRAFT":
+                n = 110
+            elif data == "CUB":
+                n = 230
+
+            # out contains the logits
+            prd = np.argmax(out, axis=1)
+
+            # optimal assignment
+            D = max(num_classes, n)
+            cost = np.zeros((D, D))
+            for i in range(prd.shape[0]):
+                cost[int(prd[i]), int(lbl[i])] += 1
+            row_ind, col_ind = linear_sum_assignment(cost, maximize=True)
+
+            opt_prd = np.zeros_like(prd)
+            for i in range(prd.shape[0]):
+                opt_prd[i] = col_ind[int(prd[i])]
+
+            trn_new_prd = opt_prd[
+                trn_old_out.shape[0] : trn_old_out.shape[0] + trn_new_out.shape[0]
+            ]
+            tst_old_prd = opt_prd[
+                -tst_old_out.shape[0] - tst_new_out.shape[0] : -tst_new_out.shape[0]
+            ]
+            tst_new_prd = opt_prd[-tst_new_out.shape[0] :]
+
+            old_prd = tst_old_prd
+            new_prd = np.concatenate([trn_new_prd, tst_new_prd], axis=0)
+            old_lbl = tst_old_lbl
+            new_lbl = np.concatenate([trn_new_lbl, tst_new_lbl], axis=0)
+
+            old_acc = accuracy_score(old_lbl, old_prd)
+            new_acc = accuracy_score(new_lbl, new_prd)
+            old_f1 = f1_score(
+                old_lbl, old_prd, average="macro", labels=np.arange(num_classes)
+            )
+            new_f1 = f1_score(
+                new_lbl, new_prd, average="macro", labels=np.arange(num_classes)
+            )
+
+            print(f"Dataset: {data}")
+            print(f"method: logits")
+            print(f"Old Test Accuracy: {old_acc:.4f}")
+            print(f"New Test Accuracy: {new_acc:.4f}")
+            print(f"Old Test F1: {old_f1:.4f}")
+            print(f"New Test F1: {new_f1:.4f}")
+
 
 if __name__ == "__main__":
     import argparse
@@ -159,6 +214,7 @@ if __name__ == "__main__":
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--metric", type=str, default="cosine")
     parser.add_argument("--init_lbl", action="store_true")
+    parser.add_argument("--logits", action="store_true")
     args = parser.parse_args()
 
     main(args)

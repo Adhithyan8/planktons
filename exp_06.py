@@ -1,8 +1,8 @@
 """
 exp 05 which was DINO pretraining without labels barely changed performance from the pretrained state
-So will try using the label information now
+So will try using the label information now.
 
-Lets modify the loss for that
+Projection head is set to be a L2 normalized linear layer as per Sagar (2023), and we add their entropy regularizer
 """
 
 import copy
@@ -12,7 +12,6 @@ import albumentations as A
 import numpy as np
 import pytorch_lightning as L
 import torch
-from lightly.models.modules import DINOProjectionHead
 from lightly.models.utils import deactivate_requires_grad, update_momentum
 from lightly.utils.scheduler import cosine_schedule
 from PIL import Image
@@ -21,6 +20,7 @@ from torch.utils.data import DataLoader
 from data import make_dataset
 from datasheet import *
 from losses import DINOLoss
+from model import CosineClassifier
 
 # continuing with this precision setting
 torch.set_float32_matmul_precision("medium")
@@ -28,7 +28,9 @@ torch.set_float32_matmul_precision("medium")
 
 # nearly a one-to-one copy from lightly examples
 class DINO(L.LightningModule):
-    def __init__(self, output_dim=256, target_dist=None):  # TODO: try fixed vs variable output_dim
+    def __init__(
+        self, output_dim=256, target_dist=None
+    ):  # TODO: try fixed vs variable output_dim
         super(DINO, self).__init__()
         backbone = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14_reg")
         # freeze all blocks except the last one
@@ -41,13 +43,9 @@ class DINO(L.LightningModule):
                     param.requires_grad_(True)
 
         self.student_backbone = backbone
-        self.student_head = DINOProjectionHead(
-            input_dim=768, hidden_dim=2048, bottleneck_dim=256, output_dim=output_dim
-        )
+        self.student_head = CosineClassifier(768, output_dim)
         self.teacher_backbone = copy.deepcopy(backbone)
-        self.teacher_head = DINOProjectionHead(
-            input_dim=768, hidden_dim=2048, bottleneck_dim=256, output_dim=output_dim
-        )
+        self.teacher_head = CosineClassifier(768, output_dim)
         deactivate_requires_grad(self.teacher_backbone)
         deactivate_requires_grad(self.teacher_head)
 
@@ -89,10 +87,11 @@ class DINO(L.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
-            self.student_head.parameters(), lr=1e-4, weight_decay=1e-4,
+            self.student_head.parameters(),
+            lr=1e-4,
         )  # TODO: try increasing lr
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=300, eta_min=0
+            optimizer, T_max=100, eta_min=0
         )
         return [optimizer], [scheduler]
 
@@ -142,15 +141,16 @@ def mask_label_transform(img, label):
     return (img0, img1), label
 
 
-# datasets to train on
-datasets = [
-    "CUB",
-]
-
 def power_law_dist(out_dim, a=0.5):
     dist = torch.tensor([1 / (i + 1) ** a for i in range(out_dim)])  # unnormalized
     dist = dist / dist.sum()
     return dist
+
+
+# datasets to train on
+datasets = [
+    "CUB",
+]
 
 # given the info, split and transform, make_dataset should give us the dataset
 for dataset in datasets:
@@ -169,11 +169,11 @@ for dataset in datasets:
     elif dataset == "HERB19":
         info = HERB19_INFO
         out_dim = 700
-        target_dist = power_law_dist(out_dim, a=2.0)
+        target_dist = torch.ones(out_dim) / out_dim  # uniform distribution
     elif dataset == "PLANKTON":
         info = PLANKTON_INFO
         out_dim = 110
-        target_dist = power_law_dist(out_dim, a=2.0)
+        target_dist = torch.ones(out_dim) / out_dim  # uniform distribution
 
     model = DINO(output_dim=out_dim, target_dist=target_dist)
 
@@ -204,7 +204,7 @@ for dataset in datasets:
         accelerator="gpu",
         devices=4,
         num_nodes=1,
-        max_epochs=300,
+        max_epochs=100,
         strategy="ddp",
         sync_batchnorm=True,
         use_distributed_sampler=True,

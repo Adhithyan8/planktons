@@ -10,7 +10,7 @@ import albumentations as A
 import numpy as np
 import pytorch_lightning as L
 import torch
-from lightly.models.modules import DINOProjectionHead
+from model import CosineClassifier
 from lightly.models.utils import deactivate_requires_grad, update_momentum
 from lightly.utils.scheduler import cosine_schedule
 from PIL import Image
@@ -39,13 +39,9 @@ class DINO(L.LightningModule):
                     param.requires_grad_(True)
 
         self.student_backbone = backbone
-        self.student_head = DINOProjectionHead(
-            input_dim=768, hidden_dim=2048, bottleneck_dim=256, output_dim=output_dim
-        )
+        self.student_head = CosineClassifier(768, output_dim)
         self.teacher_backbone = copy.deepcopy(backbone)
-        self.teacher_head = DINOProjectionHead(
-            input_dim=768, hidden_dim=2048, bottleneck_dim=256, output_dim=output_dim
-        )
+        self.teacher_head = CosineClassifier(768, output_dim)
         deactivate_requires_grad(self.teacher_backbone)
         deactivate_requires_grad(self.teacher_head)
 
@@ -91,7 +87,7 @@ class DINO(L.LightningModule):
             optimizer, T_max=100, eta_min=0
         )
         return [optimizer], [scheduler]
-    
+
     def predict_step(self, batch, batch_idx):
         img, labels = batch
         out = self.forward_teacher(img)
@@ -115,13 +111,6 @@ def data_transform(img, label):
     img = torch.from_numpy(img).permute(2, 0, 1)
     label = torch.tensor(label, dtype=torch.long)
     return img, label
-
-
-def mask_label_transform(img, label):
-    (img0, img1), label = data_transform(img, label)
-    # set label to -1 to mask it
-    label = -1 * torch.ones_like(label)
-    return (img0, img1), label
 
 
 # datasets to train on

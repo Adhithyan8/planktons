@@ -303,9 +303,12 @@ class DINOLoss(nn.Module):
         # supervised loss is cross entropy between student and the labels
         lbl = labels[labels != -1]  # b
         lbl = lbl.unsqueeze(0).expand(2, -1).permute(1, 0).reshape(-1)
-        s_out_ = student_out.permute(1, 0, 2)  # b, s, d
-        s_out_ = s_out_[labels != -1].view(-1, s_out_.shape[-1])  # flatten
-        sup_loss = F.cross_entropy(s_out_, lbl)
+        if len(lbl) == 0:
+            sup_loss = 0.0
+        else:
+            s_out_ = student_out.permute(1, 0, 2)  # b, s, d
+            s_out_ = s_out_[labels != -1].view(-1, s_out_.shape[-1])  # flatten
+            sup_loss = F.cross_entropy(s_out_, lbl)
 
         if self.target_dist is not None:
             # regularize the student output to be similar to the target distribution
@@ -320,7 +323,9 @@ class DINOLoss(nn.Module):
             dist_loss = 0.0
 
         # combine the two losses
-        total_loss = self.lambda0 * loss + self.lambda1 * sup_loss + self.lambda2 * dist_loss
+        total_loss = (
+            self.lambda0 * loss + self.lambda1 * sup_loss + self.lambda2 * dist_loss
+        )
 
         self.update_center(teacher_out)
 
