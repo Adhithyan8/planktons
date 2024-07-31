@@ -6,3 +6,4 @@ __pycache__/
 *.sh
 myenv/
 outputs/
+lightning_logs/

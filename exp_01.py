@@ -68,9 +68,11 @@ for dataset in datasets:
             img = np.array(img)
         if img.shape[0] > 256 or img.shape[1] > 256:
             img = A.LongestMaxSize(max_size=256)(image=img)["image"]
-        img = A.PadIfNeeded(img.shape[1], img.shape[0], border_mode=0)(image=img)[
+        img = A.PadIfNeeded(img.shape[1], img.shape[0], border_mode=0, value=0)(
+            image=img
+        )[
             "image"
-        ]  # TODO: try mode 4
+        ]  # TODO: try mode 44
         img = A.Resize(256, 256)(image=img)["image"]
         img = A.CenterCrop(224, 224)(image=img)["image"]
         # if grayscale, convert to 3 channels
@@ -103,10 +105,8 @@ for dataset in datasets:
 
     trainer = L.Trainer(
         accelerator="gpu",
-        devices=4,
+        devices=1,
         num_nodes=1,
-        strategy="ddp",
-        use_distributed_sampler=True,
     )
 
     trn_old_outs = trainer.predict(ViT_model, trn_old_dl)
