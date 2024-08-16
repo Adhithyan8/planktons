@@ -1,7 +1,5 @@
 """
-exp 02 shows DINOv2 with registers is a lot better.
-
-As one last check with just pretrained models, lets try the REFLECT padding
+Benchmarking pretrained DINOv2 ViT with REFLECT padding on images
 """
 
 import albumentations as A
@@ -14,8 +12,7 @@ from torch.utils.data import DataLoader
 from data import make_dataset
 from datasheet import *
 
-# continuing with this precision setting
-torch.set_float32_matmul_precision("medium")
+torch.set_float32_matmul_precision("high")
 
 model = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14_reg")
 
@@ -38,7 +35,6 @@ class ViT(L.LightningModule):
 ViT_model = ViT(model)
 
 
-# lets define the transforms for the forward pass
 def data_transform(img, label):
     # work around to maintain aspect ratio with albumentations
     with Image.open(img) as img:
@@ -59,10 +55,6 @@ def data_transform(img, label):
 # datasets to evaluate on
 datasets = [
     "CUB",
-    "SCARS",
-    "AIRCRAFT",
-    "HERB19",
-    "PLANKTON",
 ]
 
 # given the info, split and transform, make_dataset should give us the dataset

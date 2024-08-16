@@ -39,88 +39,9 @@ class NTXentLossSupervised(torch.nn.Module):
         z11.view(-1)[:: (b + 1)].fill_(float("-inf"))
         z22.view(-1)[:: (b + 1)].fill_(float("-inf"))
 
-        n1 = torch.hstack((z11, z12)).logsumexp(dim=1).mean()
-        n2 = torch.hstack((z12.T, z22)).logsumexp(dim=1).mean()
-        neg = (n1 + n2) / 2
-        loss = -(pos - neg)
-        return loss
-
-
-class InfoNCECauchy(torch.nn.Module):
-    def __init__(self, temperature=0.5):
-        super(InfoNCECauchy, self).__init__()
-        self.temperature = temperature
-
-    def forward(self, out0, out1):
-        b = out0.shape[0]
-        z11 = 1.0 / (
-            1.0
-            + (out0.unsqueeze(1) - out0.unsqueeze(0)).square().sum(dim=2)
-            / self.temperature
-        )
-        z22 = 1.0 / (
-            1.0
-            + (out1.unsqueeze(1) - out1.unsqueeze(0)).square().sum(dim=2)
-            / self.temperature
-        )
-        z12 = 1.0 / (
-            1.0
-            + (out0.unsqueeze(1) - out1.unsqueeze(0)).square().sum(dim=2)
-            / self.temperature
-        )
-
-        pos = torch.trace(z12.log()) / b
-
-        n1 = torch.hstack((z11 - torch.eye(b).to(z11), z12)).sum(dim=1).log().mean()
-        n2 = torch.hstack((z12.T, z22 - torch.eye(b).to(z22))).sum(dim=1).log().mean()
-        neg = (n1 + n2) / 2
-        loss = -(pos - neg)
-        return loss
-
-
-class InfoNCECauchySupervised(torch.nn.Module):
-    def __init__(self, temperature=0.5):
-        super(InfoNCECauchySupervised, self).__init__()
-        self.temperature = temperature
-
-    def forward(self, out0, out1, labels):
-        out0 = out0[labels != -1]
-        out1 = out1[labels != -1]
-        b = out0.shape[0]
-        z11 = 1.0 / (
-            1.0
-            + (out0.unsqueeze(1) - out0.unsqueeze(0)).square().sum(dim=2)
-            / self.temperature
-        )
-        z22 = 1.0 / (
-            1.0
-            + (out1.unsqueeze(1) - out1.unsqueeze(0)).square().sum(dim=2)
-            / self.temperature
-        )
-        z12 = 1.0 / (
-            1.0
-            + (out0.unsqueeze(1) - out1.unsqueeze(0)).square().sum(dim=2)
-            / self.temperature
-        )
-
-        l = labels[labels != -1]
-        mij = l.unsqueeze(0) == l.unsqueeze(1)
-        mii = l.unsqueeze(0) == l.unsqueeze(1)
-        mii.view(-1)[:: (b + 1)].fill_(bool(0))
-
-        p1 = (
-            torch.hstack((z11.log() * mii.float(), z12.log() * mij.float())).sum(dim=1)
-            / torch.hstack((mii, mij)).sum(dim=1).float()
-        )
-        p2 = (
-            torch.hstack((z12.log() * mij.float(), z22.log() * mii.float())).sum(dim=1)
-            / torch.hstack((mij, mii)).sum(dim=1).float()
-        )
-        pos = torch.cat((p1, p2)).mean()
-
-        n1 = torch.hstack((z11 - torch.eye(b).to(z11), z12)).sum(dim=1).log().mean()
-        n2 = torch.hstack((z12.T, z22 - torch.eye(b).to(z22))).sum(dim=1).log().mean()
-        neg = (n1 + n2) / 2
+        n1 = torch.hstack((z11, z12)).logsumexp(dim=1)
+        n2 = torch.hstack((z12.T, z22)).logsumexp(dim=1)
+        neg = torch.cat((n1, n2)).mean()
         loss = -(pos - neg)
         return loss
 
@@ -133,42 +54,14 @@ class CombinedLoss(torch.nn.Module):
         self.lambda_ = lambda_
 
     def forward(self, out0, out1, labels):
-        return (1 - self.lambda_) * self.loss1(out0, out1) + self.lambda_ * self.loss2(
-            out0, out1, labels
-        )
-
-
-class KoLeoLoss(torch.nn.Module):
-    """
-    Copied from https://github.com/facebookresearch/dinov2/blob/main/dinov2/loss/koleo_loss.py
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.pdist = torch.nn.PairwiseDistance(2, eps=1e-8)
-
-    def pairwise_NNs_inner(self, x):
-        # parwise dot products (= inverse distance)
-        dots = torch.mm(x, x.t())
-        n = x.shape[0]
-        dots.view(-1)[:: (n + 1)].fill_(-1)  # Trick to fill diagonal with -1
-        # max inner prod -> min distance
-        _, I = torch.max(dots, dim=1)
-        return I
-
-    def forward(self, student_output, eps=1e-8):
-        """
-        Args:
-            student_output (BxD): backbone output of student
-        """
-        with torch.cuda.amp.autocast(enabled=False):
-            student_output = torch.nn.functional.normalize(
-                student_output, eps=eps, p=2, dim=-1
-            )
-            I = self.pairwise_NNs_inner(student_output)
-            distances = self.pdist(student_output, student_output[I])  # BxD, BxD -> B
-            loss = -torch.log(distances + eps).mean()
-        return loss
+        # if no label is not -1, then use loss1
+        if (labels == -1).all():
+            unsup_loss = self.loss1(out0, out1)
+            sup_loss = 0.0
+        else:
+            unsup_loss = self.loss1(out0, out1)
+            sup_loss = self.loss2(out0, out1, labels)
+        return (1 - self.lambda_) * unsup_loss + self.lambda_ * sup_loss
 
 
 # copied from lightly package - modifying to use labels
@@ -201,29 +94,13 @@ class DINOLoss(nn.Module):
             Temperature of the student.
         center_momentum:
             Momentum term for the center calculation.
-
-    Examples:
-
-        >>> # initialize loss function
-        >>> loss_fn = DINOLoss(128)
-        >>>
-        >>> # generate a view of the images with a random transform
-        >>> view = transform(images)
-        >>>
-        >>> # embed the view with a student and teacher model
-        >>> teacher_out = teacher(view)
-        >>> student_out = student(view)
-        >>>
-        >>> # calculate loss
-        >>> loss = loss_fn([teacher_out], [student_out], epoch=0)
-
     """
 
     def __init__(
         self,
         output_dim: int = 65536,
-        warmup_teacher_temp: float = 0.07,
-        teacher_temp: float = 0.04,
+        warmup_teacher_temp: float = 0.04,
+        teacher_temp: float = 0.07,
         warmup_teacher_temp_epochs: int = 30,
         student_temp: float = 0.1,
         center_momentum: float = 0.9,
@@ -241,7 +118,7 @@ class DINOLoss(nn.Module):
         self.lambda1 = lambda1
         self.lambda2 = lambda2
 
-        self.register_buffer("center", torch.zeros(1, 1, output_dim))
+        self.register_buffer("center", torch.zeros(1, output_dim))
         # we apply a warm up for the teacher temperature because
         # a too high temperature makes the training instable at the beginning
         self.teacher_temp_schedule = torch.linspace(
@@ -283,46 +160,30 @@ class DINOLoss(nn.Module):
         else:
             teacher_temp = self.teacher_temp
 
-        teacher_out = torch.stack(teacher_out)
         t_out = F.softmax((teacher_out - self.center) / teacher_temp, dim=-1)
 
-        student_out = torch.stack(student_out)
         s_out = F.log_softmax(student_out / self.student_temp, dim=-1)
 
-        # calculate feature similarities where:
-        # b = batch_size, t = n_views_teacher, s = n_views_student, d = output_dim
-        # the diagonal is ignored as it contains features from the same views
-        loss = -torch.einsum("tbd,sbd->ts", t_out, s_out)
-        loss.fill_diagonal_(0)
-
-        # number of loss terms, ignoring the diagonal
-        n_terms = loss.numel() - loss.diagonal().numel()
-        batch_size = teacher_out.shape[1]
-        loss = loss.sum() / (n_terms * batch_size)
+        # unsupervised loss is cross entropy between student and teacher
+        loss = torch.mean(torch.sum(-t_out * s_out, dim=-1))
 
         # supervised loss is cross entropy between student and the labels
         lbl = labels[labels != -1]  # b
-        lbl = lbl.unsqueeze(0).expand(2, -1).permute(1, 0).reshape(-1)
         if len(lbl) == 0:
             sup_loss = 0.0
         else:
-            s_out_ = student_out.permute(1, 0, 2)  # b, s, d
-            s_out_ = s_out_[labels != -1].view(-1, s_out_.shape[-1])  # flatten
-            sup_loss = F.cross_entropy(s_out_, lbl)
+            s_out = student_out[labels != -1]
+            sup_loss = F.cross_entropy(s_out, lbl)
 
         if self.target_dist is not None:
             # regularize the student output to be similar to the target distribution
-            mean_student_probs = torch.mean(
-                F.softmax(student_out.view(-1, student_out.shape[-1]), dim=-1), dim=0
-            )
-            target_dist = self.target_dist.to(mean_student_probs.device)
-            dist_loss = F.kl_div(
-                torch.log(mean_student_probs), target_dist, reduction="batchmean"
-            )
+            mean_student_probs = torch.mean(F.softmax(student_out, dim=-1), dim=0)
+            # lets just minimize negative entropy of the student
+            dist_loss = torch.sum(mean_student_probs * torch.log(mean_student_probs))
         else:
             dist_loss = 0.0
 
-        # combine the two losses
+        # combine the losses
         total_loss = (
             self.lambda0 * loss + self.lambda1 * sup_loss + self.lambda2 * dist_loss
         )
@@ -340,7 +201,7 @@ class DINOLoss(nn.Module):
                 Stacked output from the teacher model.
 
         """
-        batch_center = torch.mean(teacher_out, dim=(0, 1), keepdim=True)
+        batch_center = torch.mean(teacher_out, dim=(0), keepdim=True)
         if dist.is_available() and dist.is_initialized():
             dist.all_reduce(batch_center)
             batch_center = batch_center / dist.get_world_size()
