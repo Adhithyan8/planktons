@@ -13,8 +13,8 @@ from torch.utils.data import DataLoader
 
 from data import make_dataset
 from datasheet import *
-from model import CosineClassifier
 from losses import DINOLoss
+from model import CosineClassifier
 
 # continuing with this precision setting
 torch.set_float32_matmul_precision("high")

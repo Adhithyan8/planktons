@@ -8,11 +8,11 @@ from time import time
 import albumentations as A
 import numpy as np
 import pytorch_lightning as L
-from pytorch_lightning.tuner import Tuner
 import torch
 from lightly.models.utils import deactivate_requires_grad, update_momentum
 from lightly.utils.scheduler import cosine_schedule
 from PIL import Image
+from pytorch_lightning.tuner import Tuner
 from pytorch_lightning.utilities import grad_norm
 from torch.utils.data import DataLoader
 
@@ -60,7 +60,7 @@ class DINO(L.LightningModule):
         self.criterion = DINOLoss(
             output_dim=output_dim,
             center_momentum=0.9,  # TODO: also centering
-            target_dist=target_dist,  
+            target_dist=target_dist,
             warmup_teacher_temp=0.04,
             teacher_temp=0.07,
             lambda0=0.65,
@@ -79,9 +79,7 @@ class DINO(L.LightningModule):
         return z
 
     def training_step(self, batch, batch_idx):
-        momentum = cosine_schedule(
-            self.current_epoch, 200, 0.996, 1.0
-        )
+        momentum = cosine_schedule(self.current_epoch, 200, 0.996, 1.0)
         update_momentum(self.student_backbone, self.teacher_backbone, momentum)
         update_momentum(self.student_head, self.teacher_head, momentum)
         (x_teacher, x_student), labels = batch
@@ -110,9 +108,7 @@ class DINO(L.LightningModule):
 
     def on_before_optimizer_step(self, optimizer):
         norms = grad_norm(module=self, norm_type=2)  # returns dict
-        self.log(
-            "grad_norm", norms["grad_2.0_norm_total"], prog_bar=True
-        )
+        self.log("grad_norm", norms["grad_2.0_norm_total"], prog_bar=True)
 
 
 # lets define the transforms for DINO training
@@ -158,10 +154,12 @@ def mask_label_transform(img, label):
     label = -1 * torch.ones_like(label)
     return (img0, img1), label
 
+
 def power_law_dist(out_dim, a=0.5):
     dist = torch.tensor([1 / (i + 1) ** a for i in range(out_dim)])  # unnormalized
     dist = dist / dist.sum()
     return dist
+
 
 def remap_labels_HERB19(img, label):
     (img0, img1), label = data_transform(img, label)
@@ -169,6 +167,7 @@ def remap_labels_HERB19(img, label):
     label = SORTED_HERB19_CLS.index(label)
     label = torch.tensor(label, dtype=torch.long)
     return (img0, img1), label
+
 
 # datasets to train on
 datasets = [
