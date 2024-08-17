@@ -171,7 +171,7 @@ def remap_labels_HERB19(img, label):
 
 # datasets to train on
 datasets = [
-    "CUB",
+    "PLANKTON",
 ]
 trials = 3
 
@@ -185,6 +185,9 @@ for dataset in datasets:
         elif dataset == "SCARS":
             info = SCARS_INFO
             out_dim = 230
+            # shift labels to start from 0
+            for sample in info:
+                sample["label"] -= 1
             target_dist = torch.ones(out_dim) / out_dim  # uniform distribution
         elif dataset == "AIRCRAFT":
             info = AIRCRAFT_INFO

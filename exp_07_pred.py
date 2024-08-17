@@ -68,7 +68,7 @@ def data_transform(img, label):
 
 # datasets to predict on
 datasets = [
-    "CUB",
+    "HERB19",
 ]
 trials = 3
 
@@ -81,6 +81,9 @@ for dataset in datasets:
         elif dataset == "SCARS":
             info = SCARS_INFO
             out_dim = 230
+            # shift labels to start from 0
+            for sample in info:
+                sample["label"] -= 1
         elif dataset == "AIRCRAFT":
             info = AIRCRAFT_INFO
             out_dim = 110

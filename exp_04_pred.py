@@ -63,7 +63,7 @@ def data_transform(img, label):
 
 # datasets to predict on
 datasets = [
-    "CUB",
+    "AIRCRAFT",
 ]
 trials = 3
 # given the info, split and transform, make_dataset should give us the dataset
@@ -88,6 +88,9 @@ for dataset in datasets:
             info = CUB_INFO
         elif dataset == "SCARS":
             info = SCARS_INFO
+            # shift labels to start from 0
+            for sample in info:
+                sample["label"] -= 1
         elif dataset == "AIRCRAFT":
             info = AIRCRAFT_INFO
         elif dataset == "HERB19":

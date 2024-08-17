@@ -133,6 +133,9 @@ for dataset in datasets:
             info = CUB_INFO
         elif dataset == "SCARS":
             info = SCARS_INFO
+            # shift labels to start from 0
+            for sample in info:
+                sample["label"] -= 1
         elif dataset == "AIRCRAFT":
             info = AIRCRAFT_INFO
         elif dataset == "HERB19":
