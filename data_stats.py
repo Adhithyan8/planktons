@@ -102,3 +102,13 @@ plt.legend()
 plt.grid()
 plt.savefig(f"class_freq.png", dpi=300)
 plt.close()
+
+# print herb distribution
+print("Herb distribution")
+print([herb_class_freq[i] for i in range(NUM_CLASSES["HERB19"])])
+print("Plankton distribution")
+print([plankton_class_freq[i] for i in range(NUM_CLASSES["PLANKTON"])])
+
+# check if they sum to 1
+print(sum(herb_class_freq.values()))
+print(sum(plankton_class_freq.values()))
