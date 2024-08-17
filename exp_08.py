@@ -1,5 +1,5 @@
 """
-We do DINO training with target distribution starting from the contrastive pre-trained model.
+We do DINO training with target distribution
 """
 
 import copy
@@ -167,24 +167,38 @@ for dataset in datasets:
         if dataset == "CUB":
             info = CUB_INFO
             out_dim = 230
+            target_dist = None
         elif dataset == "SCARS":
             info = SCARS_INFO
             out_dim = 230
             # shift labels to start from 0
             for sample in info:
                 sample["label"] -= 1
+            target_dist = None
         elif dataset == "AIRCRAFT":
             info = AIRCRAFT_INFO
             out_dim = 110
+            target_dist = None
         elif dataset == "HERB19":
             info = HERB19_INFO
             out_dim = 700
+            target_dist = torch.tensor(HERB19_DIST)
+            # add trailing zeros to target_dist to match out_dim
+            target_dist = torch.cat(
+                [target_dist, torch.zeros(out_dim - len(target_dist))]
+            )
         elif dataset == "PLANKTON":
             info = PLANKTON_INFO
             out_dim = 110
+            target_dist = torch.tensor(PLANKTON_DIST)
+            # add trailing zeros to target_dist to match out_dim
+            target_dist = torch.cat(
+                [target_dist, torch.zeros(out_dim - len(target_dist))]
+            )
 
         model = DINO(
             output_dim=out_dim,
+            target_dist=target_dist,
             weight_name=f"outputs/exp_04_{dataset}_trial_{trial}.pt",
         )
 
