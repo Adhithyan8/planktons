@@ -21,7 +21,7 @@ def eRANK(embeddings):
 
 
 def main(args):
-    data = "HERB19"
+    data = "PLANKTON"
     trials = 3
     num_classes = NUM_CLASSES[data]
 

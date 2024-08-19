@@ -163,7 +163,7 @@ trials = 3
 
 # given the info, split and transform, make_dataset should give us the dataset
 for dataset in datasets:
-    for trial in range(trials):
+    for trial in [1, 2]:
         if dataset == "CUB":
             info = CUB_INFO
             out_dim = 230

@@ -157,7 +157,7 @@ def mask_label_transform(img, label):
 
 # datasets to train on
 datasets = [
-    "PLANKTON",
+    "HERB19",
 ]
 trials = 3
 
@@ -246,7 +246,7 @@ for dataset in datasets:
         print(f"Training time for {dataset}: {time()-t}")
 
         # save the model
-        torch.save(model.state_dict(), f"outputs/exp_07_{dataset}_trial_{trial}.pt")
+        torch.save(model.state_dict(), f"outputs/exp_08_{dataset}_trial_{trial}.pt")
         print(f"Model saved for {dataset} trial {trial}")
 
         # delete the model - cuz I am paranoid
