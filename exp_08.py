@@ -157,7 +157,7 @@ def mask_label_transform(img, label):
 
 # datasets to train on
 datasets = [
-    "HERB19",
+    "PLANKTON",
 ]
 trials = 3
 
@@ -185,7 +185,7 @@ for dataset in datasets:
             target_dist = torch.tensor(HERB19_DIST)
             # add trailing zeros to target_dist to match out_dim
             target_dist = torch.cat(
-                [target_dist, torch.zeros(out_dim - len(target_dist))]
+                [target_dist, torch.zeros(out_dim - len(target_dist)) + 1e-6]
             )
         elif dataset == "PLANKTON":
             info = PLANKTON_INFO
@@ -193,7 +193,7 @@ for dataset in datasets:
             target_dist = torch.tensor(PLANKTON_DIST)
             # add trailing zeros to target_dist to match out_dim
             target_dist = torch.cat(
-                [target_dist, torch.zeros(out_dim - len(target_dist))]
+                [target_dist, torch.zeros(out_dim - len(target_dist)) + 1e-6]
             )
 
         model = DINO(

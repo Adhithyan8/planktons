@@ -180,7 +180,10 @@ class DINOLoss(nn.Module):
             mean_student_probs = torch.mean(F.softmax(student_out, dim=-1), dim=0)
             target_dist = self.target_dist.to(mean_student_probs.device)
             # kl divergence between the student output and the target distribution
-            dist_loss = torch.sum(mean_student_probs * torch.log(mean_student_probs / (target_dist + 1e-8)))
+            dist_loss = torch.sum(
+                mean_student_probs
+                * torch.log(mean_student_probs / (target_dist))
+            )
         else:
             mean_student_probs = torch.mean(F.softmax(student_out, dim=-1), dim=0)
             # lets just minimize negative entropy of the student

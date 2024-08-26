@@ -68,7 +68,7 @@ def data_transform(img, label):
 
 # datasets to predict on
 datasets = [
-    "HERB19",
+    "PLANKTON",
 ]
 trials = 3
 
